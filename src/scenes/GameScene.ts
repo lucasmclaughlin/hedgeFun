@@ -120,17 +120,17 @@ export class GameScene extends Phaser.Scene {
   /** Add ground-level decoration: grass tufts, stones, soil texture */
   private addGroundDecoration(): void {
     const groundGlyphs = [
-      { char: '"', fg: '#4a7a2a' },
-      { char: "'", fg: '#3a6a2a' },
-      { char: ',', fg: '#5a8a3a' },
-      { char: '`', fg: '#4a7a2a' },
-      { char: '"', fg: '#3a5a1a' },
+      { char: '"', fg: '#7aba4a' },
+      { char: "'", fg: '#6aaa3a' },
+      { char: ',', fg: '#8aca5a' },
+      { char: '`', fg: '#7aba4a' },
+      { char: '"', fg: '#5a9a2a' },
     ];
 
     const undergroundGlyphs = [
-      { char: '·', fg: '#5a4a2a' },
-      { char: '°', fg: '#4a3a1a' },
-      { char: '~', fg: '#3a2a0a' },
+      { char: '·', fg: '#9a7a4a' },
+      { char: '°', fg: '#8a6a3a' },
+      { char: '~', fg: '#7a5a2a' },
     ];
 
     // Scatter grass on ground layer
@@ -154,9 +154,9 @@ export class GameScene extends Phaser.Scene {
     for (let col = 0; col < GRID_CONFIG.cols; col++) {
       for (let row = 0; row < 6; row++) {
         if (Math.random() < 0.02) {
-          this.asciiRenderer.setOverlay(col, row, { char: '*', fg: '#8a8aaa' });
+          this.asciiRenderer.setOverlay(col, row, { char: '*', fg: '#cacaee' });
         } else if (Math.random() < 0.01) {
-          this.asciiRenderer.setOverlay(col, row, { char: '~', fg: '#3a3a5a' });
+          this.asciiRenderer.setOverlay(col, row, { char: '~', fg: '#7a7aaa' });
         }
       }
     }

@@ -37,12 +37,12 @@ export interface GridConfig {
 
 /** All layer definitions with row ranges */
 export const LAYER_CONFIGS: LayerConfig[] = [
-  { layer: Layer.Sky,          name: 'Sky',           startRow: 0,  endRow: 5,  bgColor: '#1a1a2e', fgColor: '#4a4a6a' },
-  { layer: Layer.UpperCanopy,  name: 'Upper Canopy',  startRow: 6,  endRow: 12, bgColor: '#1a2a1a', fgColor: '#3a5a3a' },
-  { layer: Layer.MidCanopy,    name: 'Mid Canopy',    startRow: 13, endRow: 19, bgColor: '#1a2e1a', fgColor: '#2a4a2a' },
-  { layer: Layer.LowerShrub,   name: 'Lower Shrub',   startRow: 20, endRow: 26, bgColor: '#2a3a1a', fgColor: '#3a4a2a' },
-  { layer: Layer.Ground,       name: 'Ground',        startRow: 27, endRow: 33, bgColor: '#3a2a1a', fgColor: '#5a4a2a' },
-  { layer: Layer.Underground,  name: 'Underground',   startRow: 34, endRow: 39, bgColor: '#2a1a0a', fgColor: '#4a3a1a' },
+  { layer: Layer.Sky,          name: 'Sky',           startRow: 0,  endRow: 5,  bgColor: '#2e3a5e', fgColor: '#8a8aba' },
+  { layer: Layer.UpperCanopy,  name: 'Upper Canopy',  startRow: 6,  endRow: 12, bgColor: '#2a4a2a', fgColor: '#6a9a5a' },
+  { layer: Layer.MidCanopy,    name: 'Mid Canopy',    startRow: 13, endRow: 19, bgColor: '#2a5a2a', fgColor: '#5a8a4a' },
+  { layer: Layer.LowerShrub,   name: 'Lower Shrub',   startRow: 20, endRow: 26, bgColor: '#4a6a2a', fgColor: '#7a9a4a' },
+  { layer: Layer.Ground,       name: 'Ground',        startRow: 27, endRow: 33, bgColor: '#6a5030', fgColor: '#a08050' },
+  { layer: Layer.Underground,  name: 'Underground',   startRow: 34, endRow: 39, bgColor: '#4a3018', fgColor: '#7a6040' },
 ];
 
 export const GRID_CONFIG: GridConfig = {

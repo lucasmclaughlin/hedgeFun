@@ -1,0 +1,34 @@
+{
+  "name": "hedgefun",
+  "version": "1.0.0",
+  "description": "A 2D side-scrolling simulation game about growing and managing a hedgerow ecosystem. Plant native UK hedge species, watch them grow through the seasons, and attract wildlife — from underground moles to treetop birds.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "lint": "eslint src --ext .ts"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lucasmclaughlin/hedgeFun.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/lucasmclaughlin/hedgeFun/issues"
+  },
+  "homepage": "https://github.com/lucasmclaughlin/hedgeFun#readme",
+  "dependencies": {
+    "phaser": "^3.90.0"
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^8.57.2",
+    "@typescript-eslint/parser": "^8.57.2",
+    "eslint": "^10.1.0",
+    "prettier": "^3.8.1",
+    "typescript": "^5.9.3",
+    "vite": "^8.0.3"
+  }
+}

@@ -9,7 +9,6 @@ import { getBackgroundGlyph, getBackgroundColor } from './GlyphAtlas';
  */
 export class AsciiRenderer {
   private scene: Phaser.Scene;
-  private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
   private image: Phaser.GameObjects.Image;
   private texture: Phaser.Textures.CanvasTexture;
@@ -30,19 +29,15 @@ export class AsciiRenderer {
     const pixelWidth = cols * cellWidth;
     const pixelHeight = rows * cellHeight;
 
-    // Create offscreen canvas
-    this.canvas = document.createElement('canvas');
-    this.canvas.width = pixelWidth;
-    this.canvas.height = pixelHeight;
-    this.ctx = this.canvas.getContext('2d')!;
-
-    // Create Phaser texture from canvas
+    // Create Phaser canvas texture and draw directly to it
     this.texture = scene.textures.createCanvas('ascii-grid', pixelWidth, pixelHeight)!;
+    this.ctx = this.texture.getContext();
     this.image = scene.add.image(0, 0, 'ascii-grid');
     this.image.setOrigin(0, 0);
 
     // Initial render
     this.renderFullGrid();
+    this.texture.refresh();
   }
 
   /** Set an overlay glyph at a position (for entities, plants, etc.) */

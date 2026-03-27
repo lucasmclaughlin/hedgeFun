@@ -6,6 +6,7 @@ import { EnergyManager } from '@/simulation/EnergyManager';
 import { GrowthSimulator } from '@/simulation/GrowthSimulator';
 import { SoilMap } from '@/simulation/SoilMap';
 import { PlantRenderer } from '@/simulation/PlantRenderer';
+import { WeatherEngine } from '@/simulation/WeatherEngine';
 import { HudRenderer } from '@/ui/HudRenderer';
 import { SPECIES_LIST } from '@/data/species';
 import type { PlantState } from '@/types';
@@ -24,6 +25,7 @@ export class GameScene extends Phaser.Scene {
   private energyManager!: EnergyManager;
   private growthSim!: GrowthSimulator;
   private plantRenderer!: PlantRenderer;
+  private weatherEngine!: WeatherEngine;
   private hudRenderer!: HudRenderer;
   private selectedSpeciesIndex = 0;
 
@@ -123,6 +125,7 @@ export class GameScene extends Phaser.Scene {
     this.energyManager = new EnergyManager();
     this.growthSim = new GrowthSimulator(soilMap);
     this.plantRenderer = new PlantRenderer(this.asciiRenderer);
+    this.weatherEngine = new WeatherEngine(this.asciiRenderer);
     this.hudRenderer = new HudRenderer(this);
 
     // Add decorative elements after systems init
@@ -151,8 +154,12 @@ export class GameScene extends Phaser.Scene {
       const moon = this.timeClock.getMoonPhase();
       this.energyManager.onPeriodAdvance(period, moon);
       this.growthSim.onPeriodAdvance(period);
+      this.weatherEngine.onPeriodAdvance(period);
       this.plantRenderer.renderPlants(this.growthSim.getPlants());
     }
+
+    // Animate weather in sky
+    this.weatherEngine.updateSkyOverlays(delta);
 
     // Update HUD
     const period = this.timeClock.getCurrentPeriod();
@@ -173,6 +180,7 @@ export class GameScene extends Phaser.Scene {
       this.hoveredPlant,
       this.mouseScreenX,
       this.mouseScreenY,
+      this.weatherEngine.getWeatherName(),
     );
 
     this.asciiRenderer.update(delta);

@@ -3,7 +3,7 @@ import { Season, GrowthStage, Layer, type SpeciesDef } from '@/types';
 /**
  * Native UK hedge species definitions.
  * Visual offsets: row 0 = root (ground surface), negative = above ground, positive = below.
- * Ground row is 15 in the 50-row grid. Plants can reach row 3 (offset -12) and root to row ~21 (offset +6).
+ * Ground row is 20 in the 55-row grid. Plants can reach row 8 (offset -12) and root to row ~26 (offset +6).
  */
 export const SPECIES: Record<string, SpeciesDef> = {
   hawthorn: {

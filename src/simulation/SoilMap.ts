@@ -30,8 +30,8 @@ export class SoilMap {
   }
 
   getSoilLayer(row: number): SoilLayer {
-    if (row < 23) return SoilLayer.Topsoil;
-    if (row < 36) return SoilLayer.Subsoil;
+    if (row < 28) return SoilLayer.Topsoil;
+    if (row < 41) return SoilLayer.Subsoil;
     return SoilLayer.Bedrock;
   }
 

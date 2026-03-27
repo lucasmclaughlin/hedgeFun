@@ -37,17 +37,17 @@ export interface GridConfig {
 
 /** All layer definitions with row ranges — muted gray palette */
 export const LAYER_CONFIGS: LayerConfig[] = [
-  { layer: Layer.Sky,          name: 'Sky',           startRow: 0,  endRow: 2,  bgColor: '#22252e', fgColor: '#6a6a8a' },
-  { layer: Layer.UpperCanopy,  name: 'Upper Canopy',  startRow: 3,  endRow: 6,  bgColor: '#262926', fgColor: '#5a5a4a' },
-  { layer: Layer.MidCanopy,    name: 'Mid Canopy',    startRow: 7,  endRow: 9,  bgColor: '#282a26', fgColor: '#4a4a3a' },
-  { layer: Layer.LowerShrub,   name: 'Lower Shrub',   startRow: 10, endRow: 14, bgColor: '#302e28', fgColor: '#5a5a4a' },
-  { layer: Layer.Ground,       name: 'Ground',        startRow: 15, endRow: 15, bgColor: '#3a3528', fgColor: '#7a7050' },
-  { layer: Layer.Underground,  name: 'Underground',   startRow: 16, endRow: 49, bgColor: '#2a2520', fgColor: '#5a5040' },
+  { layer: Layer.Sky,          name: 'Sky',           startRow: 0,  endRow: 7,  bgColor: '#22252e', fgColor: '#6a6a8a' },
+  { layer: Layer.UpperCanopy,  name: 'Upper Canopy',  startRow: 8,  endRow: 11, bgColor: '#262926', fgColor: '#5a5a4a' },
+  { layer: Layer.MidCanopy,    name: 'Mid Canopy',    startRow: 12, endRow: 14, bgColor: '#282a26', fgColor: '#4a4a3a' },
+  { layer: Layer.LowerShrub,   name: 'Lower Shrub',   startRow: 15, endRow: 19, bgColor: '#302e28', fgColor: '#5a5a4a' },
+  { layer: Layer.Ground,       name: 'Ground',        startRow: 20, endRow: 20, bgColor: '#3a3528', fgColor: '#7a7050' },
+  { layer: Layer.Underground,  name: 'Underground',   startRow: 21, endRow: 54, bgColor: '#2a2520', fgColor: '#5a5040' },
 ];
 
 export const GRID_CONFIG: GridConfig = {
   cols: 200,
-  rows: 50,
+  rows: 55,
   cellWidth: 14,
   cellHeight: 20,
   fontSize: 16,
@@ -121,12 +121,23 @@ export interface PlantState {
   plantedAt: number;
 }
 
+// ── Weather system ──────────────────────────────
+
+export enum Weather {
+  Clear = 0,
+  Overcast = 1,
+  Rain = 2,
+  Storm = 3,
+  Wind = 4,
+  Frost = 5,
+}
+
 // ── Soil system ──────────────────────────────
 
 export enum SoilLayer {
-  Topsoil = 0,   // rows 16-22
-  Subsoil = 1,   // rows 23-35
-  Bedrock = 2,   // rows 36-49
+  Topsoil = 0,   // rows 21-27
+  Subsoil = 1,   // rows 28-40
+  Bedrock = 2,   // rows 41-54
 }
 
 export interface SoilCell {

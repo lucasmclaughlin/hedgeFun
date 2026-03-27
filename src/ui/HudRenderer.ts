@@ -24,10 +24,16 @@ const HUD_STYLE: Phaser.Types.GameObjects.Text.TextStyle = {
   padding: { x: 8, y: 4 },
 };
 
+const PLANTABLE_COLOR = '#66dd66';
+const NOT_PLANTABLE_COLOR = '#aa4444';
+const SELECTED_PLANTABLE_COLOR = '#88ff88';
+const SELECTED_NOT_PLANTABLE_COLOR = '#dd6666';
+
 export class HudRenderer {
   private seasonText: Phaser.GameObjects.Text;
   private energyText: Phaser.GameObjects.Text;
-  private speciesPanel: Phaser.GameObjects.Text;
+  private weatherText: Phaser.GameObjects.Text;
+  private speciesLines: Phaser.GameObjects.Text[] = [];
   private messageText: Phaser.GameObjects.Text;
   private tooltipText: Phaser.GameObjects.Text;
   private infoPanel: Phaser.GameObjects.Text;
@@ -42,15 +48,22 @@ export class HudRenderer {
       .setScrollFactor(0)
       .setDepth(100);
 
-    this.speciesPanel = scene.add.text(8, 52, '', {
-      ...HUD_STYLE,
-      fontSize: '13px',
-      lineSpacing: 2,
-    })
+    this.weatherText = scene.add.text(8, 48, '', HUD_STYLE)
       .setScrollFactor(0)
       .setDepth(100);
 
-    this.messageText = scene.add.text(8, 210, '', {
+    // Create individual text objects for each species line (for color coding)
+    for (let i = 0; i < 6; i++) {
+      const line = scene.add.text(8, 72 + i * 20, '', {
+        ...HUD_STYLE,
+        fontSize: '13px',
+      })
+        .setScrollFactor(0)
+        .setDepth(100);
+      this.speciesLines.push(line);
+    }
+
+    this.messageText = scene.add.text(8, 200, '', {
       ...HUD_STYLE,
       color: '#ffaa44',
     })
@@ -81,7 +94,6 @@ export class HudRenderer {
       .setDepth(100)
       .setAlpha(0);
 
-    // Position info panel on the right
     const cam = scene.cameras.main;
     this.infoPanel.setPosition(cam.width - 258, 8);
   }
@@ -101,6 +113,7 @@ export class HudRenderer {
     hoveredPlant: PlantState | null,
     mouseScreenX: number,
     mouseScreenY: number,
+    weatherName: string,
   ): void {
     const color = SEASON_COLORS[period.season];
     this.seasonText.setText(`${subName} ${seasonName} ${moonSymbol} ${moonName}`);
@@ -109,18 +122,34 @@ export class HudRenderer {
     const bar = '\u2588'.repeat(Math.min(energy, 20)) + '\u2591'.repeat(Math.max(0, 20 - energy));
     this.energyText.setText(`Energy: ${bar} ${energy}`);
 
-    // Species panel — show all species with status
-    const lines: string[] = [];
-    for (let i = 0; i < allSpecies.length; i++) {
+    this.weatherText.setText(`Weather: ${weatherName}`);
+
+    // Species panel — individual colored lines
+    for (let i = 0; i < this.speciesLines.length; i++) {
       const sp = allSpecies[i];
+      if (!sp) {
+        this.speciesLines[i].setText('');
+        continue;
+      }
       const num = i + 1;
-      const selected = i === selectedIndex ? '\u25B6' : ' ';
+      const isSelected = i === selectedIndex;
+      const arrow = isSelected ? '\u25B6' : ' ';
       const canPlant = sp.plantableSeasons.includes(period.season) && energy >= sp.energyCost;
-      const plantable = canPlant ? '\u2713' : '\u2717';
+      const marker = canPlant ? '\u2713' : '\u2717';
       const activity = sp.seasonalActivity[period.season];
-      lines.push(`${selected}[${num}] ${sp.name.padEnd(11)} ${sp.energyCost}E ${plantable} ${activity}`);
+      const text = `${arrow}[${num}] ${sp.name.padEnd(11)} ${sp.energyCost}E ${marker} ${activity}`;
+
+      this.speciesLines[i].setText(text);
+
+      // Color based on plantability + selection
+      let lineColor: string;
+      if (isSelected) {
+        lineColor = canPlant ? SELECTED_PLANTABLE_COLOR : SELECTED_NOT_PLANTABLE_COLOR;
+      } else {
+        lineColor = canPlant ? PLANTABLE_COLOR : NOT_PLANTABLE_COLOR;
+      }
+      this.speciesLines[i].setColor(lineColor);
     }
-    this.speciesPanel.setText(lines.join('\n'));
 
     // Fade message
     if (this.messageTimer > 0) {
@@ -166,7 +195,6 @@ export class HudRenderer {
         this.infoPanel.setAlpha(1);
       }
     } else if (selectedSpecies) {
-      // Show selected species info when not hovering
       const activity = selectedSpecies.seasonalActivity[period.season];
       const canPlant = selectedSpecies.plantableSeasons.includes(period.season);
       const infoLines = [

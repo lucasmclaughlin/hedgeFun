@@ -1,0 +1,181 @@
+hedgeFun — Development Plan
+============================
+
+Completed:
+  - ASCII grid rendering (200x50, canvas)
+  - 6 native UK hedge species with 4-stage growth visuals (seed/seedling/juvenile/mature)
+  - Root systems visible underground
+  - Energy system (seasonal gain + moon bonus, spend to plant)
+  - 12-period year (4 seasons x 3 subs), moon phases
+  - Soil system (topsoil/subsoil/bedrock) with procedural fertility/rock density
+  - Soil quality affects growth rate
+  - HUD: species panel, energy bar, season/moon display, hover tooltips, info panel
+  - Cursor locked to ground row, A/D movement, 1-6 species select, space/enter to plant
+  - Camera panning (arrow keys + mouse drag)
+  - Ground/sky/underground decoration
+
+========================================================================
+Phase 3: Wildlife & Creatures
+========================================================================
+
+The hedge exists for wildlife. As the hedge develops, creatures should discover
+and inhabit it. Each creature type lives at a specific layer and has habitat
+requirements (minimum plant cover, specific species present, season, etc.).
+
+3.1  Creature data & types
+     - CreatureDef: id, name, ascii glyph(s), layer, habitat requirements,
+       rarity, movement pattern, seasonal behavior
+     - CreatureState: position, behavior state, home plant
+     - Start with ~8-10 creatures across layers:
+       Underground: earthworm, beetle
+       Ground: hedgehog, field mouse, toad
+       Shrub: wren, robin, dormouse
+       Canopy: woodpigeon, owl
+     - Each has 2-3 frame ASCII animation (idle, moving)
+
+3.2  Habitat evaluation
+     - HabitatScorer: scans planted hedge and scores each layer
+       (coverage %, species diversity, maturity)
+     - Each creature has minimum thresholds to appear
+       e.g. hedgehog needs 3+ mature ground-layer plants
+     - Score checked once per period
+
+3.3  Creature spawning & movement
+     - CreatureSimulator: manages active creatures
+     - Spawns creatures when habitat thresholds met (with random delay)
+     - Simple movement: wander within home range (few columns),
+       occasionally rest, occasionally move to adjacent plant
+     - Seasonal: some hibernate in winter, some migrate, some stay
+     - Render via overlay system (same as plants)
+
+3.4  Creature info in HUD
+     - Hover over creature shows name + description
+     - Info panel shows creature details, habitat needs, which plants attract it
+     - Census counter in HUD: "Creatures: 5 species, 12 total"
+
+========================================================================
+Phase 4: Biodiversity Scoring
+========================================================================
+
+No win condition, but milestone-based scoring rewards building a rich ecosystem.
+
+4.1  Score system
+     - BiodiversityTracker: tracks milestones reached
+     - Score categories:
+       Plant diversity: unique species planted, maturity spread
+       Layer coverage: % of each layer filled
+       Creature diversity: unique creature species present
+       Ecosystem health: sustained creature population over time
+     - Milestone thresholds (e.g. "First bloom", "5 species planted",
+       "Hedgehog moved in", "All layers occupied", "10 creatures")
+
+4.2  Milestone notifications
+     - Toast message when milestone reached
+     - Milestone log accessible via key (M?)
+     - Each milestone has a title, description, and point value
+
+4.3  Score display
+     - Compact score in top-right corner of HUD
+     - Detailed breakdown in milestone log overlay
+
+========================================================================
+Phase 5: Plant Interactions & Lifecycle
+========================================================================
+
+Plants should interact with each other and have a full lifecycle beyond
+just growing to maturity.
+
+5.1  Plant death & decay
+     - Plants can die from: overcrowding, poor soil, prolonged winter stress
+     - Death animation: gradual color fade to gray, then collapse
+     - Dead plants leave behind fertility bonus in soil
+     - Player can remove dead plants (free, reclaims column)
+
+5.2  Spreading & self-seeding
+     - Mature plants occasionally drop seeds to adjacent empty columns
+     - Spread rate varies by species (elder fast, holly slow)
+     - Self-seeded plants cost no energy but can be removed
+     - Gives the hedge a more organic, wild feel over time
+
+5.3  Companion planting
+     - Some species boost neighbors (hawthorn + dog rose: rose climbs hawthorn)
+     - Some compete (two fast growers side by side slow each other)
+     - Visual indicator when synergy/competition is active
+     - Affects growth rate modifier
+
+5.4  Seasonal visuals
+     - Flower glyphs appear during bloom season (species-specific colors)
+     - Fruit/berry glyphs appear during fruiting
+     - Autumn: leaf color change, some leaves drop (deciduous species)
+     - Winter: bare branches for deciduous, holly stays green
+     - Spring: fresh green buds appear
+
+========================================================================
+Phase 6: Weather & Events
+========================================================================
+
+6.1  Weather system
+     - WeatherEngine: generates weather per period
+     - Types: Clear, Rain, Wind, Frost, Storm, Drought
+     - Season-weighted probabilities (frost in winter, drought in summer)
+     - Weather affects: growth rate, energy gain, creature behavior
+     - Visual effects: rain particles in sky, frost color tint,
+       wind causes slight glyph displacement
+
+6.2  Random events
+     - Rare events that shake things up:
+       "A fox visits the hedge" (scatters ground creatures temporarily)
+       "Heavy rain floods the roots" (temporary growth boost)
+       "Late frost" (damages early seedlings in spring)
+       "Bountiful harvest" (extra energy from mature fruiting plants)
+     - Event notification + brief visual effect
+     - Frequency: ~1 event every 4-6 periods
+
+========================================================================
+Phase 7: Polish & Mobile
+========================================================================
+
+7.1  Sound
+     - Ambient background: birdsong (spring/summer), wind (autumn/winter)
+     - Event sounds: planting, growth stage advance, creature arrival, milestone
+     - Muted, lo-fi aesthetic to match ASCII visuals
+
+7.2  Tutorial
+     - First-run guided tutorial: plant your first hawthorn
+     - Contextual hints ("Try planting dog rose next to hawthorn")
+     - Can be dismissed permanently
+
+7.3  Save/load
+     - Auto-save to localStorage every few periods
+     - Manual save/load slots
+     - Serialize: all plant states, creature states, time, energy, milestones
+
+7.4  Mobile / touch
+     - Touch-friendly controls: tap to move cursor, tap species to select
+     - Responsive canvas sizing
+     - iOS native wrapper (Capacitor or similar)
+
+7.5  Performance
+     - Profile render loop for 50+ plants with creatures
+     - Consider dirty-rect rendering (only redraw changed cells)
+     - Object pooling for creature instances
+
+========================================================================
+Suggested implementation order
+========================================================================
+
+Start with Phase 3 (creatures) — it's the biggest missing piece from the
+core game loop and will make the hedge feel alive. Phase 4 (scoring) follows
+naturally since it needs creatures to score. Phase 5 (plant lifecycle) adds
+depth to the existing planting mechanics. Phase 6 (weather) is flavor on top.
+Phase 7 (polish) is ongoing but save/load should happen early-ish.
+
+Priority shortlist:
+  1. Phase 3.1-3.3 — get creatures appearing and moving
+  2. Phase 4.1-4.2 — basic scoring + milestones
+  3. Phase 5.4 — seasonal visuals (low effort, high impact)
+  4. Phase 7.3 — save/load (before people invest time playing)
+  5. Phase 5.1-5.3 — plant lifecycle
+  6. Phase 3.4 — creature HUD integration
+  7. Phase 6 — weather
+  8. Phase 7 — remaining polish

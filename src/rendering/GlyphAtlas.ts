@@ -87,9 +87,9 @@ function pickGlyph(glyphs: Glyph[], col: number, row: number): Glyph {
 /** Get a background fill glyph for a position — deterministic based on coords */
 export function getBackgroundGlyph(col: number, row: number): Glyph {
   // Underground: row-aware soil sublayers
-  if (row >= 36) return pickGlyph(BEDROCK_GLYPHS, col, row);
-  if (row >= 23) return pickGlyph(SUBSOIL_GLYPHS, col, row);
-  if (row >= 16) return pickGlyph(TOPSOIL_GLYPHS, col, row);
+  if (row >= 41) return pickGlyph(BEDROCK_GLYPHS, col, row);
+  if (row >= 28) return pickGlyph(SUBSOIL_GLYPHS, col, row);
+  if (row >= 21) return pickGlyph(TOPSOIL_GLYPHS, col, row);
 
   const layer = getLayerForRow(row);
   const glyphs = LAYER_FILL_GLYPHS[layer];
@@ -100,9 +100,9 @@ export function getBackgroundGlyph(col: number, row: number): Glyph {
 /** Get the background color for a row */
 export function getBackgroundColor(row: number): string {
   // Underground soil sublayers
-  if (row >= 36) return BEDROCK_BG;
-  if (row >= 23) return SUBSOIL_BG;
-  if (row >= 16) return TOPSOIL_BG;
+  if (row >= 41) return BEDROCK_BG;
+  if (row >= 28) return SUBSOIL_BG;
+  if (row >= 21) return TOPSOIL_BG;
 
   const layer = getLayerForRow(row);
   const config = LAYER_CONFIGS.find(c => c.layer === layer);

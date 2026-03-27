@@ -7,6 +7,7 @@ import { GrowthSimulator } from '@/simulation/GrowthSimulator';
 import { PlantRenderer } from '@/simulation/PlantRenderer';
 import { HudRenderer } from '@/ui/HudRenderer';
 import { SPECIES_LIST } from '@/data/species';
+import type { PlantState } from '@/types';
 
 export class GameScene extends Phaser.Scene {
   private asciiRenderer!: AsciiRenderer;
@@ -25,6 +26,14 @@ export class GameScene extends Phaser.Scene {
   private hudRenderer!: HudRenderer;
   private selectedSpeciesIndex = 0;
 
+  // Mouse hover state
+  private hoveredPlant: PlantState | null = null;
+  private mouseScreenX = 0;
+  private mouseScreenY = 0;
+
+  /** Ground surface row — cursor is locked here */
+  private readonly groundRow = LAYER_CONFIGS[4].startRow; // row 27
+
   constructor() {
     super({ key: 'GameScene' });
   }
@@ -39,9 +48,12 @@ export class GameScene extends Phaser.Scene {
     this.cameras.main.setBounds(0, 0, worldWidth, worldHeight);
 
     // Start camera centered on the ground layer
-    const groundStart = LAYER_CONFIGS[4].startRow * GRID_CONFIG.cellHeight;
+    const groundStart = this.groundRow * GRID_CONFIG.cellHeight;
     this.cameras.main.scrollX = worldWidth / 2 - this.cameras.main.width / 2;
     this.cameras.main.scrollY = groundStart - this.cameras.main.height / 2;
+
+    // Place cursor on ground row, centered
+    this.asciiRenderer.setCursor(Math.floor(GRID_CONFIG.cols / 2), this.groundRow);
 
     // Keyboard input
     this.cursors = this.input.keyboard!.createCursorKeys();
@@ -61,6 +73,19 @@ export class GameScene extends Phaser.Scene {
     });
 
     this.input.on('pointermove', (pointer: Phaser.Input.Pointer) => {
+      // Track mouse screen position for tooltip
+      this.mouseScreenX = pointer.x;
+      this.mouseScreenY = pointer.y;
+
+      // Update hovered plant based on world position
+      const col = Math.floor(pointer.worldX / GRID_CONFIG.cellWidth);
+      const row = Math.floor(pointer.worldY / GRID_CONFIG.cellHeight);
+      if (col >= 0 && col < GRID_CONFIG.cols && row >= 0 && row < GRID_CONFIG.rows) {
+        this.hoveredPlant = this.growthSim.getPlantAtCell(col, row);
+      } else {
+        this.hoveredPlant = null;
+      }
+
       if (!this.isDragging) return;
       const dx = this.dragStartX - pointer.x;
       const dy = this.dragStartY - pointer.y;
@@ -72,17 +97,15 @@ export class GameScene extends Phaser.Scene {
       this.isDragging = false;
     });
 
-    // Click to place cursor
+    // Click to move cursor (horizontal only, stays on ground row)
     this.input.on('pointerup', (pointer: Phaser.Input.Pointer) => {
       const dx = Math.abs(pointer.x - this.dragStartX);
       const dy = Math.abs(pointer.y - this.dragStartY);
       if (dx < 5 && dy < 5) {
         const worldX = pointer.worldX;
-        const worldY = pointer.worldY;
         const col = Math.floor(worldX / GRID_CONFIG.cellWidth);
-        const row = Math.floor(worldY / GRID_CONFIG.cellHeight);
-        if (col >= 0 && col < GRID_CONFIG.cols && row >= 0 && row < GRID_CONFIG.rows) {
-          this.asciiRenderer.setCursor(col, row);
+        if (col >= 0 && col < GRID_CONFIG.cols) {
+          this.asciiRenderer.setCursor(col, this.groundRow);
         }
       }
     });
@@ -138,6 +161,10 @@ export class GameScene extends Phaser.Scene {
       selected,
       this.selectedSpeciesIndex,
       delta,
+      SPECIES_LIST,
+      this.hoveredPlant,
+      this.mouseScreenX,
+      this.mouseScreenY,
     );
 
     this.asciiRenderer.update(delta);
@@ -145,21 +172,14 @@ export class GameScene extends Phaser.Scene {
 
   private handleKeyDown(event: KeyboardEvent): void {
     const col = this.asciiRenderer.getCursorCol();
-    const row = this.asciiRenderer.getCursorRow();
 
     switch (event.key) {
-      // Cursor movement
-      case 'w': case 'W':
-        if (row > 0) this.asciiRenderer.setCursor(col, row - 1);
-        break;
-      case 's': case 'S':
-        if (row < GRID_CONFIG.rows - 1) this.asciiRenderer.setCursor(col, row + 1);
-        break;
+      // Cursor movement — horizontal only, locked to ground row
       case 'a': case 'A':
-        if (col > 0) this.asciiRenderer.setCursor(col - 1, row);
+        if (col > 0) this.asciiRenderer.setCursor(col - 1, this.groundRow);
         break;
       case 'd': case 'D':
-        if (col < GRID_CONFIG.cols - 1) this.asciiRenderer.setCursor(col + 1, row);
+        if (col < GRID_CONFIG.cols - 1) this.asciiRenderer.setCursor(col + 1, this.groundRow);
         break;
 
       // Species selection (1-6)
@@ -177,14 +197,6 @@ export class GameScene extends Phaser.Scene {
 
   private tryPlant(): void {
     const col = this.asciiRenderer.getCursorCol();
-    const row = this.asciiRenderer.getCursorRow();
-
-    // Must be on ground surface row
-    const groundRow = LAYER_CONFIGS[4].startRow; // row 27
-    if (row !== groundRow) {
-      this.hudRenderer.showMessage('Move cursor to ground level (row with grass)');
-      return;
-    }
 
     // Check column not occupied
     if (this.growthSim.isColumnOccupied(col)) {
@@ -211,7 +223,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     // Plant it
-    this.growthSim.addPlant(species.id, col, row, this.timeClock.getTotalPeriods());
+    this.growthSim.addPlant(species.id, col, this.groundRow, this.timeClock.getTotalPeriods());
     this.plantRenderer.renderPlants(this.growthSim.getPlants());
     this.hudRenderer.showMessage(`Planted ${species.name}!`);
   }

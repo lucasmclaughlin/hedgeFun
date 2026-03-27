@@ -105,6 +105,10 @@ export interface SpeciesDef {
   ticksPerStage: Record<GrowthStage, number>;
   visuals: Record<GrowthStage, StageVisual>;
   matureLayers: Layer[];
+  /** What this species does in each season (e.g. "Dormant", "Budding", "Blooming") */
+  seasonalActivity: Record<Season, string>;
+  /** Short flavour description for info panel */
+  description: string;
 }
 
 /** Runtime state of a single planted instance */

@@ -53,4 +53,19 @@ export class GrowthSimulator {
   isColumnOccupied(col: number): boolean {
     return this.plants.some(p => p.col === col);
   }
+
+  /** Find the plant that occupies a given cell (if any), checking species visuals */
+  getPlantAtCell(col: number, row: number): PlantState | null {
+    for (const plant of this.plants) {
+      const species = SPECIES[plant.speciesId];
+      if (!species) continue;
+      const visual = species.visuals[plant.stage];
+      for (const [colOff, rowOff] of visual.cells) {
+        if (plant.col + colOff === col && plant.row + rowOff === row) {
+          return plant;
+        }
+      }
+    }
+    return null;
+  }
 }

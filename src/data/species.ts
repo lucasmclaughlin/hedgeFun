@@ -8,9 +8,16 @@ export const SPECIES: Record<string, SpeciesDef> = {
   hawthorn: {
     id: 'hawthorn',
     name: 'Hawthorn',
+    description: 'The backbone of any hedge. Thorny, dense, and beloved by birds for its red haws in autumn.',
     energyCost: 3,
     plantableSeasons: [Season.Spring, Season.Autumn],
     growthRate: 1.0,
+    seasonalActivity: {
+      [Season.Spring]: 'Budding',
+      [Season.Summer]: 'Leafy',
+      [Season.Autumn]: 'Fruiting',
+      [Season.Winter]: 'Dormant',
+    },
     ticksPerStage: {
       [GrowthStage.Seed]: 2,
       [GrowthStage.Seedling]: 3,
@@ -74,9 +81,16 @@ export const SPECIES: Record<string, SpeciesDef> = {
   blackthorn: {
     id: 'blackthorn',
     name: 'Blackthorn',
+    description: 'Tough, spiny shrub. Blooms white before its leaves appear. Produces sloe berries in autumn.',
     energyCost: 4,
     plantableSeasons: [Season.Autumn, Season.Winter],
     growthRate: 0.8,
+    seasonalActivity: {
+      [Season.Spring]: 'Blooming',
+      [Season.Summer]: 'Leafy',
+      [Season.Autumn]: 'Fruiting',
+      [Season.Winter]: 'Dormant',
+    },
     ticksPerStage: {
       [GrowthStage.Seed]: 3,
       [GrowthStage.Seedling]: 4,
@@ -131,9 +145,16 @@ export const SPECIES: Record<string, SpeciesDef> = {
   elder: {
     id: 'elder',
     name: 'Elder',
+    description: 'Fast-growing with fragrant cream flowers in spring and dark elderberries in autumn.',
     energyCost: 2,
     plantableSeasons: [Season.Spring, Season.Summer],
     growthRate: 1.5,
+    seasonalActivity: {
+      [Season.Spring]: 'Blooming',
+      [Season.Summer]: 'Leafy',
+      [Season.Autumn]: 'Fruiting',
+      [Season.Winter]: 'Dormant',
+    },
     ticksPerStage: {
       [GrowthStage.Seed]: 1,
       [GrowthStage.Seedling]: 2,
@@ -183,9 +204,16 @@ export const SPECIES: Record<string, SpeciesDef> = {
   hazel: {
     id: 'hazel',
     name: 'Hazel',
+    description: 'Tall coppice tree with dangling catkins in spring and hazelnuts in autumn.',
     energyCost: 3,
     plantableSeasons: [Season.Autumn],
     growthRate: 0.9,
+    seasonalActivity: {
+      [Season.Spring]: 'Catkins',
+      [Season.Summer]: 'Leafy',
+      [Season.Autumn]: 'Nutting',
+      [Season.Winter]: 'Dormant',
+    },
     ticksPerStage: {
       [GrowthStage.Seed]: 2,
       [GrowthStage.Seedling]: 4,
@@ -246,9 +274,16 @@ export const SPECIES: Record<string, SpeciesDef> = {
   dogrose: {
     id: 'dogrose',
     name: 'Dog Rose',
+    description: 'Scrambling wild rose with pink flowers in summer and bright red rosehips in autumn.',
     energyCost: 2,
     plantableSeasons: [Season.Spring],
     growthRate: 1.2,
+    seasonalActivity: {
+      [Season.Spring]: 'Budding',
+      [Season.Summer]: 'Blooming',
+      [Season.Autumn]: 'Rosehips',
+      [Season.Winter]: 'Dormant',
+    },
     ticksPerStage: {
       [GrowthStage.Seed]: 2,
       [GrowthStage.Seedling]: 2,
@@ -303,9 +338,16 @@ export const SPECIES: Record<string, SpeciesDef> = {
   holly: {
     id: 'holly',
     name: 'Holly',
+    description: 'Evergreen with glossy spiny leaves. Slow but keeps its foliage year-round. Red berries in winter.',
     energyCost: 5,
     plantableSeasons: [Season.Spring, Season.Autumn],
     growthRate: 0.6,
+    seasonalActivity: {
+      [Season.Spring]: 'Growing',
+      [Season.Summer]: 'Evergreen',
+      [Season.Autumn]: 'Berrying',
+      [Season.Winter]: 'Evergreen',
+    },
     ticksPerStage: {
       [GrowthStage.Seed]: 3,
       [GrowthStage.Seedling]: 5,

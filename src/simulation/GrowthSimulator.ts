@@ -1,8 +1,14 @@
 import { Season, GrowthStage, type TimePeriod, type PlantState } from '@/types';
 import { SPECIES } from '@/data/species';
+import { SoilMap } from './SoilMap';
 
 export class GrowthSimulator {
   private plants: PlantState[] = [];
+  private soilMap: SoilMap;
+
+  constructor(soilMap: SoilMap) {
+    this.soilMap = soilMap;
+  }
 
   addPlant(speciesId: string, col: number, row: number, currentPeriod: number): void {
     this.plants.push({
@@ -36,6 +42,11 @@ export class GrowthSimulator {
         modifier *= 0.5; // winter slowdown (holly is evergreen)
       }
 
+      // Soil quality modifier based on root depth
+      const rootDepth = this.getMaxRootDepth(species.visuals[plant.stage]);
+      const soilMod = this.soilMap.getColumnQuality(plant.col, rootDepth);
+      modifier *= soilMod;
+
       plant.ticksInStage += modifier;
 
       const required = species.ticksPerStage[plant.stage];
@@ -67,5 +78,14 @@ export class GrowthSimulator {
       }
     }
     return null;
+  }
+
+  /** Get the deepest root offset from a stage visual (max positive row offset) */
+  private getMaxRootDepth(visual: { cells: Array<[number, number, unknown]> }): number {
+    let maxDepth = 0;
+    for (const [, rowOff] of visual.cells) {
+      if (rowOff > maxDepth) maxDepth = rowOff;
+    }
+    return maxDepth;
   }
 }

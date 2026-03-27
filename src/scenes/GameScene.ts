@@ -4,6 +4,7 @@ import { GRID_CONFIG, LAYER_CONFIGS } from '@/types';
 import { TimeClock } from '@/simulation/TimeClock';
 import { EnergyManager } from '@/simulation/EnergyManager';
 import { GrowthSimulator } from '@/simulation/GrowthSimulator';
+import { SoilMap } from '@/simulation/SoilMap';
 import { PlantRenderer } from '@/simulation/PlantRenderer';
 import { HudRenderer } from '@/ui/HudRenderer';
 import { SPECIES_LIST } from '@/data/species';
@@ -32,7 +33,13 @@ export class GameScene extends Phaser.Scene {
   private mouseScreenY = 0;
 
   /** Ground surface row — cursor is locked here */
-  private readonly groundRow = LAYER_CONFIGS[4].startRow; // row 27
+  private readonly groundRow = LAYER_CONFIGS[4].startRow;
+
+  /** Underground layer config */
+  private readonly undergroundConfig = LAYER_CONFIGS[5];
+
+  /** Sky layer config */
+  private readonly skyConfig = LAYER_CONFIGS[0];
 
   constructor() {
     super({ key: 'GameScene' });
@@ -50,7 +57,7 @@ export class GameScene extends Phaser.Scene {
     // Start camera centered on the ground layer
     const groundStart = this.groundRow * GRID_CONFIG.cellHeight;
     this.cameras.main.scrollX = worldWidth / 2 - this.cameras.main.width / 2;
-    this.cameras.main.scrollY = groundStart - this.cameras.main.height / 2;
+    this.cameras.main.scrollY = groundStart - this.cameras.main.height / 3;
 
     // Place cursor on ground row, centered
     this.asciiRenderer.setCursor(Math.floor(GRID_CONFIG.cols / 2), this.groundRow);
@@ -110,15 +117,16 @@ export class GameScene extends Phaser.Scene {
       }
     });
 
-    // Add decorative elements
-    this.addGroundDecoration();
-
     // Initialize simulation systems
+    const soilMap = new SoilMap(GRID_CONFIG.cols, this.groundRow, GRID_CONFIG.rows);
     this.timeClock = new TimeClock();
     this.energyManager = new EnergyManager();
-    this.growthSim = new GrowthSimulator();
+    this.growthSim = new GrowthSimulator(soilMap);
     this.plantRenderer = new PlantRenderer(this.asciiRenderer);
     this.hudRenderer = new HudRenderer(this);
+
+    // Add decorative elements after systems init
+    this.addGroundDecoration(soilMap);
   }
 
   update(_time: number, delta: number): void {
@@ -228,8 +236,8 @@ export class GameScene extends Phaser.Scene {
     this.hudRenderer.showMessage(`Planted ${species.name}!`);
   }
 
-  /** Add ground-level decoration: grass tufts, stones, soil texture */
-  private addGroundDecoration(): void {
+  /** Add ground-level decoration: grass tufts, soil texture, rocks */
+  private addGroundDecoration(soilMap: SoilMap): void {
     const groundGlyphs = [
       { char: '"', fg: '#7aba4a' },
       { char: "'", fg: '#6aaa3a' },
@@ -238,34 +246,46 @@ export class GameScene extends Phaser.Scene {
       { char: '"', fg: '#5a9a2a' },
     ];
 
-    const undergroundGlyphs = [
-      { char: '\u00B7', fg: '#9a7a4a' },
-      { char: '\u00B0', fg: '#8a6a3a' },
-      { char: '~', fg: '#7a5a2a' },
-    ];
-
-    // Scatter grass on ground layer
+    // Scatter grass on ground row
     for (let col = 0; col < GRID_CONFIG.cols; col++) {
       if (Math.random() < 0.6) {
         const g = groundGlyphs[Math.floor(Math.random() * groundGlyphs.length)];
-        this.asciiRenderer.setOverlay(col, 27, g);
+        this.asciiRenderer.setOverlay(col, this.groundRow, g);
       }
+    }
 
-      for (let row = 34; row < 40; row++) {
-        if (Math.random() < 0.08) {
-          const g = undergroundGlyphs[Math.floor(Math.random() * undergroundGlyphs.length)];
-          this.asciiRenderer.setOverlay(col, row, g);
+    // Underground: soil-aware decoration using SoilMap data
+    const ugStart = this.undergroundConfig.startRow;
+    const ugEnd = this.undergroundConfig.endRow;
+    for (let col = 0; col < GRID_CONFIG.cols; col++) {
+      for (let row = ugStart; row <= ugEnd; row++) {
+        const cell = soilMap.getSoilAt(col, row);
+
+        // Place rock overlays in rocky areas
+        if (cell.rockDensity > 0.7 && Math.random() < 0.15) {
+          const rockChars = ['O', '@', '#'];
+          const ch = rockChars[Math.floor(Math.random() * rockChars.length)];
+          this.asciiRenderer.setOverlay(col, row, { char: ch, fg: '#6a6a70' });
+        } else if (cell.rockDensity > 0.4 && Math.random() < 0.08) {
+          this.asciiRenderer.setOverlay(col, row, { char: 'o', fg: '#5a5a60' });
+        }
+
+        // Fertile topsoil gets organic overlays
+        if (cell.fertility > 0.8 && Math.random() < 0.06) {
+          const fertChars = ['%', 'w', '~'];
+          const ch = fertChars[Math.floor(Math.random() * fertChars.length)];
+          this.asciiRenderer.setOverlay(col, row, { char: ch, fg: '#6a5a30' });
         }
       }
     }
 
     // Sky — occasional stars/clouds
     for (let col = 0; col < GRID_CONFIG.cols; col++) {
-      for (let row = 0; row < 6; row++) {
+      for (let row = this.skyConfig.startRow; row <= this.skyConfig.endRow; row++) {
         if (Math.random() < 0.02) {
-          this.asciiRenderer.setOverlay(col, row, { char: '*', fg: '#cacaee' });
+          this.asciiRenderer.setOverlay(col, row, { char: '*', fg: '#9a9abe' });
         } else if (Math.random() < 0.01) {
-          this.asciiRenderer.setOverlay(col, row, { char: '~', fg: '#7a7aaa' });
+          this.asciiRenderer.setOverlay(col, row, { char: '~', fg: '#5a5a7a' });
         }
       }
     }

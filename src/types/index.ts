@@ -35,19 +35,19 @@ export interface GridConfig {
   fontFamily: string;
 }
 
-/** All layer definitions with row ranges */
+/** All layer definitions with row ranges — muted gray palette */
 export const LAYER_CONFIGS: LayerConfig[] = [
-  { layer: Layer.Sky,          name: 'Sky',           startRow: 0,  endRow: 5,  bgColor: '#2e3a5e', fgColor: '#8a8aba' },
-  { layer: Layer.UpperCanopy,  name: 'Upper Canopy',  startRow: 6,  endRow: 12, bgColor: '#2a4a2a', fgColor: '#6a9a5a' },
-  { layer: Layer.MidCanopy,    name: 'Mid Canopy',    startRow: 13, endRow: 19, bgColor: '#2a5a2a', fgColor: '#5a8a4a' },
-  { layer: Layer.LowerShrub,   name: 'Lower Shrub',   startRow: 20, endRow: 26, bgColor: '#4a6a2a', fgColor: '#7a9a4a' },
-  { layer: Layer.Ground,       name: 'Ground',        startRow: 27, endRow: 33, bgColor: '#6a5030', fgColor: '#a08050' },
-  { layer: Layer.Underground,  name: 'Underground',   startRow: 34, endRow: 39, bgColor: '#4a3018', fgColor: '#7a6040' },
+  { layer: Layer.Sky,          name: 'Sky',           startRow: 0,  endRow: 2,  bgColor: '#22252e', fgColor: '#6a6a8a' },
+  { layer: Layer.UpperCanopy,  name: 'Upper Canopy',  startRow: 3,  endRow: 6,  bgColor: '#262926', fgColor: '#5a5a4a' },
+  { layer: Layer.MidCanopy,    name: 'Mid Canopy',    startRow: 7,  endRow: 9,  bgColor: '#282a26', fgColor: '#4a4a3a' },
+  { layer: Layer.LowerShrub,   name: 'Lower Shrub',   startRow: 10, endRow: 14, bgColor: '#302e28', fgColor: '#5a5a4a' },
+  { layer: Layer.Ground,       name: 'Ground',        startRow: 15, endRow: 15, bgColor: '#3a3528', fgColor: '#7a7050' },
+  { layer: Layer.Underground,  name: 'Underground',   startRow: 16, endRow: 49, bgColor: '#2a2520', fgColor: '#5a5040' },
 ];
 
 export const GRID_CONFIG: GridConfig = {
   cols: 200,
-  rows: 40,
+  rows: 50,
   cellWidth: 14,
   cellHeight: 20,
   fontSize: 16,
@@ -119,4 +119,18 @@ export interface PlantState {
   stage: GrowthStage;
   ticksInStage: number;
   plantedAt: number;
+}
+
+// ── Soil system ──────────────────────────────
+
+export enum SoilLayer {
+  Topsoil = 0,   // rows 16-22
+  Subsoil = 1,   // rows 23-35
+  Bedrock = 2,   // rows 36-49
+}
+
+export interface SoilCell {
+  layer: SoilLayer;
+  rockDensity: number;   // 0-1
+  fertility: number;     // 0-1
 }

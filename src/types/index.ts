@@ -53,3 +53,66 @@ export const GRID_CONFIG: GridConfig = {
   fontSize: 16,
   fontFamily: 'Courier New, monospace',
 };
+
+// ── Phase 2: Simulation types ──────────────────────────────
+
+export enum Season {
+  Spring = 0,
+  Summer = 1,
+  Autumn = 2,
+  Winter = 3,
+}
+
+export enum SubSeason {
+  Early = 0,
+  Mid = 1,
+  Late = 2,
+}
+
+export interface TimePeriod {
+  season: Season;
+  sub: SubSeason;
+  index: number; // 0-11
+}
+
+export enum MoonPhase {
+  New = 0,
+  Waxing = 1,
+  Full = 2,
+  Waning = 3,
+}
+
+export enum GrowthStage {
+  Seed = 0,
+  Seedling = 1,
+  Juvenile = 2,
+  Mature = 3,
+}
+
+/** A growth stage's visual: cells relative to the plant's root position */
+export interface StageVisual {
+  /** [colOffset, rowOffset, glyph] — row 0 = root row, negative = above ground */
+  cells: Array<[number, number, Glyph]>;
+}
+
+/** Species definition — pure data */
+export interface SpeciesDef {
+  id: string;
+  name: string;
+  energyCost: number;
+  plantableSeasons: Season[];
+  growthRate: number;
+  ticksPerStage: Record<GrowthStage, number>;
+  visuals: Record<GrowthStage, StageVisual>;
+  matureLayers: Layer[];
+}
+
+/** Runtime state of a single planted instance */
+export interface PlantState {
+  speciesId: string;
+  col: number;
+  row: number;
+  stage: GrowthStage;
+  ticksInStage: number;
+  plantedAt: number;
+}

@@ -1,6 +1,12 @@
 import Phaser from 'phaser';
 import { AsciiRenderer } from '@/rendering/AsciiRenderer';
 import { GRID_CONFIG, LAYER_CONFIGS } from '@/types';
+import { TimeClock } from '@/simulation/TimeClock';
+import { EnergyManager } from '@/simulation/EnergyManager';
+import { GrowthSimulator } from '@/simulation/GrowthSimulator';
+import { PlantRenderer } from '@/simulation/PlantRenderer';
+import { HudRenderer } from '@/ui/HudRenderer';
+import { SPECIES_LIST } from '@/data/species';
 
 export class GameScene extends Phaser.Scene {
   private asciiRenderer!: AsciiRenderer;
@@ -10,6 +16,14 @@ export class GameScene extends Phaser.Scene {
   private dragStartY = 0;
   private cameraStartX = 0;
   private cameraStartY = 0;
+
+  // Simulation
+  private timeClock!: TimeClock;
+  private energyManager!: EnergyManager;
+  private growthSim!: GrowthSimulator;
+  private plantRenderer!: PlantRenderer;
+  private hudRenderer!: HudRenderer;
+  private selectedSpeciesIndex = 0;
 
   constructor() {
     super({ key: 'GameScene' });
@@ -32,7 +46,7 @@ export class GameScene extends Phaser.Scene {
     // Keyboard input
     this.cursors = this.input.keyboard!.createCursorKeys();
 
-    // WASD for cursor movement on the grid
+    // Key events
     this.input.keyboard!.on('keydown', (event: KeyboardEvent) => {
       this.handleKeyDown(event);
     });
@@ -60,7 +74,6 @@ export class GameScene extends Phaser.Scene {
 
     // Click to place cursor
     this.input.on('pointerup', (pointer: Phaser.Input.Pointer) => {
-      // Only set cursor if it was a click (not a drag)
       const dx = Math.abs(pointer.x - this.dragStartX);
       const dy = Math.abs(pointer.y - this.dragStartY);
       if (dx < 5 && dy < 5) {
@@ -74,8 +87,15 @@ export class GameScene extends Phaser.Scene {
       }
     });
 
-    // Add some decorative elements to make the world feel alive
+    // Add decorative elements
     this.addGroundDecoration();
+
+    // Initialize simulation systems
+    this.timeClock = new TimeClock();
+    this.energyManager = new EnergyManager();
+    this.growthSim = new GrowthSimulator();
+    this.plantRenderer = new PlantRenderer(this.asciiRenderer);
+    this.hudRenderer = new HudRenderer(this);
   }
 
   update(_time: number, delta: number): void {
@@ -94,6 +114,32 @@ export class GameScene extends Phaser.Scene {
       this.cameras.main.scrollY += scrollSpeed;
     }
 
+    // Advance time
+    if (this.timeClock.tick(delta)) {
+      const period = this.timeClock.getCurrentPeriod();
+      const moon = this.timeClock.getMoonPhase();
+      this.energyManager.onPeriodAdvance(period, moon);
+      this.growthSim.onPeriodAdvance(period);
+      this.plantRenderer.renderPlants(this.growthSim.getPlants());
+    }
+
+    // Update HUD
+    const period = this.timeClock.getCurrentPeriod();
+    const moon = this.timeClock.getMoonPhase();
+    const selected = SPECIES_LIST[this.selectedSpeciesIndex] ?? null;
+    this.hudRenderer.update(
+      this.timeClock.getSeasonName(),
+      this.timeClock.getSubSeasonName(),
+      this.timeClock.getMoonSymbol(),
+      this.timeClock.getMoonPhaseName(),
+      period,
+      moon,
+      this.energyManager.getEnergy(),
+      selected,
+      this.selectedSpeciesIndex,
+      delta,
+    );
+
     this.asciiRenderer.update(delta);
   }
 
@@ -102,6 +148,7 @@ export class GameScene extends Phaser.Scene {
     const row = this.asciiRenderer.getCursorRow();
 
     switch (event.key) {
+      // Cursor movement
       case 'w': case 'W':
         if (row > 0) this.asciiRenderer.setCursor(col, row - 1);
         break;
@@ -114,7 +161,59 @@ export class GameScene extends Phaser.Scene {
       case 'd': case 'D':
         if (col < GRID_CONFIG.cols - 1) this.asciiRenderer.setCursor(col + 1, row);
         break;
+
+      // Species selection (1-6)
+      case '1': case '2': case '3': case '4': case '5': case '6':
+        this.selectedSpeciesIndex = parseInt(event.key) - 1;
+        break;
+
+      // Plant action
+      case ' ':
+      case 'Enter':
+        this.tryPlant();
+        break;
     }
+  }
+
+  private tryPlant(): void {
+    const col = this.asciiRenderer.getCursorCol();
+    const row = this.asciiRenderer.getCursorRow();
+
+    // Must be on ground surface row
+    const groundRow = LAYER_CONFIGS[4].startRow; // row 27
+    if (row !== groundRow) {
+      this.hudRenderer.showMessage('Move cursor to ground level (row with grass)');
+      return;
+    }
+
+    // Check column not occupied
+    if (this.growthSim.isColumnOccupied(col)) {
+      this.hudRenderer.showMessage('Something is already planted here');
+      return;
+    }
+
+    const species = SPECIES_LIST[this.selectedSpeciesIndex];
+    if (!species) return;
+
+    // Check plantable season
+    const period = this.timeClock.getCurrentPeriod();
+    if (!species.plantableSeasons.includes(period.season)) {
+      this.hudRenderer.showMessage(
+        `${species.name} can't be planted in ${this.timeClock.getSeasonName()}`
+      );
+      return;
+    }
+
+    // Check energy
+    if (!this.energyManager.spend(species.energyCost)) {
+      this.hudRenderer.showMessage(`Not enough energy (need ${species.energyCost})`);
+      return;
+    }
+
+    // Plant it
+    this.growthSim.addPlant(species.id, col, row, this.timeClock.getTotalPeriods());
+    this.plantRenderer.renderPlants(this.growthSim.getPlants());
+    this.hudRenderer.showMessage(`Planted ${species.name}!`);
   }
 
   /** Add ground-level decoration: grass tufts, stones, soil texture */
@@ -128,20 +227,18 @@ export class GameScene extends Phaser.Scene {
     ];
 
     const undergroundGlyphs = [
-      { char: '·', fg: '#9a7a4a' },
-      { char: '°', fg: '#8a6a3a' },
+      { char: '\u00B7', fg: '#9a7a4a' },
+      { char: '\u00B0', fg: '#8a6a3a' },
       { char: '~', fg: '#7a5a2a' },
     ];
 
     // Scatter grass on ground layer
     for (let col = 0; col < GRID_CONFIG.cols; col++) {
-      // Ground surface (row 27) — grass line
       if (Math.random() < 0.6) {
         const g = groundGlyphs[Math.floor(Math.random() * groundGlyphs.length)];
         this.asciiRenderer.setOverlay(col, 27, g);
       }
 
-      // Underground — occasional roots and rocks
       for (let row = 34; row < 40; row++) {
         if (Math.random() < 0.08) {
           const g = undergroundGlyphs[Math.floor(Math.random() * undergroundGlyphs.length)];

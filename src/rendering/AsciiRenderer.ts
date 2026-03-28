@@ -10,6 +10,14 @@ const SEASON_TINTS: Record<Season, [number, number, number]> = {
   [Season.Winter]: [-10, -4, 14],
 };
 
+/** Subtle glow blur per season — stronger in spring/summer, faint in winter */
+const SEASON_GLOW: Record<Season, number> = {
+  [Season.Spring]: 1.5,
+  [Season.Summer]: 2.0,
+  [Season.Autumn]: 1.0,
+  [Season.Winter]: 0.5,
+};
+
 /** Weather color tints [R, G, B] offsets */
 const WEATHER_TINTS: Record<Weather, [number, number, number]> = {
   [Weather.Clear]: [3, 3, 4],
@@ -44,6 +52,7 @@ export class AsciiRenderer {
   private tintR = 0;
   private tintG = 0;
   private tintB = 0;
+  private glowBlur = 1.5;
   private animTime = 0;
 
   constructor(scene: Phaser.Scene) {
@@ -71,6 +80,7 @@ export class AsciiRenderer {
     this.tintR = st[0] + wt[0];
     this.tintG = st[1] + wt[1];
     this.tintB = st[2] + wt[2];
+    this.glowBlur = SEASON_GLOW[season];
   }
 
   /** Set an overlay glyph at a position (for entities, plants, etc.) */
@@ -151,11 +161,27 @@ export class AsciiRenderer {
 
         // Draw character — modulate overlay fg colors for animated seasonal effect
         if (glyph.char !== ' ') {
-          ctx.fillStyle = overlay ? this.modulateColor(glyph.fg) : glyph.fg;
+          const fgColor = overlay ? this.modulateColor(glyph.fg) : glyph.fg;
+          ctx.fillStyle = fgColor;
+
+          // Subtle seasonal glow on plant/root overlay characters
+          if (overlay) {
+            ctx.shadowColor = fgColor;
+            ctx.shadowBlur = this.glowBlur;
+            ctx.shadowOffsetX = 0;
+            ctx.shadowOffsetY = 0;
+          }
+
           // Center the character in the cell
           const textX = x + (cellWidth - ctx.measureText(glyph.char).width) / 2;
           const textY = y + (cellHeight - fontSize) / 2;
           ctx.fillText(glyph.char, textX, textY);
+
+          // Reset shadow after overlay glyph
+          if (overlay) {
+            ctx.shadowColor = 'transparent';
+            ctx.shadowBlur = 0;
+          }
         }
 
         // Draw cursor

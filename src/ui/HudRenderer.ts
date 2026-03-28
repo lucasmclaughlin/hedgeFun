@@ -268,4 +268,18 @@ export class HudRenderer {
     this.messageText.setAlpha(1);
     this.messageTimer = durationMs;
   }
+
+  /** Return all HUD game objects so they can be assigned to a dedicated camera */
+  getAllObjects(): Phaser.GameObjects.GameObject[] {
+    return [
+      this.seasonText,
+      this.energyText,
+      this.weatherText,
+      this.creatureText,
+      ...this.speciesLines,
+      this.messageText,
+      this.tooltipText,
+      this.infoPanel,
+    ];
+  }
 }

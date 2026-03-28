@@ -148,6 +148,14 @@ export interface SoilCell {
   fertility: number;     // 0-1
 }
 
+// ── View modes ──────────────────────────────
+
+export enum ViewMode {
+  Hedge = 0,        // sky to ground (rows 0-20)
+  Underground = 1,  // ground to bedrock (rows 20-54)
+  Full = 2,         // everything (rows 0-54)
+}
+
 // ── Creature system ──────────────────────────────
 
 export enum CreatureBehavior {

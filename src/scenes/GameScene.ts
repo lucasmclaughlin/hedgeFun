@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { AsciiRenderer } from '@/rendering/AsciiRenderer';
-import { GRID_CONFIG, LAYER_CONFIGS } from '@/types';
+import { GRID_CONFIG, LAYER_CONFIGS, ViewMode } from '@/types';
 import { TimeClock } from '@/simulation/TimeClock';
 import { EnergyManager } from '@/simulation/EnergyManager';
 import { GrowthSimulator } from '@/simulation/GrowthSimulator';
@@ -12,6 +12,7 @@ import { CreatureSimulator } from '@/simulation/CreatureSimulator';
 import { CreatureRenderer } from '@/simulation/CreatureRenderer';
 import { HudRenderer } from '@/ui/HudRenderer';
 import { SPECIES_LIST } from '@/data/species';
+import { saveHighScore } from '@/scenes/SplashScene';
 import type { PlantState, CreatureState } from '@/types';
 
 /** Deterministic hash for boulder/aquifer placement */
@@ -58,8 +59,21 @@ export class GameScene extends Phaser.Scene {
   /** Sky layer config */
   private readonly skyConfig = LAYER_CONFIGS[0];
 
+  /** Current view mode */
+  private viewMode = ViewMode.Hedge;
+
+  /** Player name from splash screen */
+  private playerName = 'Player';
+
+  /** Dedicated HUD camera that ignores zoom */
+  private hudCamera!: Phaser.Cameras.Scene2D.Camera;
+
   constructor() {
     super({ key: 'GameScene' });
+  }
+
+  init(data: { playerName?: string }): void {
+    this.playerName = data?.playerName || 'Player';
   }
 
   create(): void {
@@ -68,13 +82,9 @@ export class GameScene extends Phaser.Scene {
     const worldWidth = this.asciiRenderer.getWorldWidth();
     const worldHeight = this.asciiRenderer.getWorldHeight();
 
-    // Set world bounds and camera
+    // Set initial camera position (horizontal center), then apply view mode bounds
     this.cameras.main.setBounds(0, 0, worldWidth, worldHeight);
-
-    // Start camera centered on the ground layer
-    const groundStart = this.groundRow * GRID_CONFIG.cellHeight;
     this.cameras.main.scrollX = worldWidth / 2 - this.cameras.main.width / 2;
-    this.cameras.main.scrollY = groundStart - this.cameras.main.height / 3;
 
     // Place cursor on ground row, centered
     this.asciiRenderer.setCursor(Math.floor(GRID_CONFIG.cols / 2), this.groundRow);
@@ -148,12 +158,27 @@ export class GameScene extends Phaser.Scene {
     this.creatureRenderer = new CreatureRenderer(this.asciiRenderer);
     this.hudRenderer = new HudRenderer(this);
 
+    // Create a separate HUD camera that ignores zoom/scroll
+    // Main camera ignores HUD elements, HUD camera ignores the game world
+    this.hudCamera = this.cameras.add(0, 0, this.cameras.main.width, this.cameras.main.height);
+    this.hudCamera.setScroll(0, 0);
+
+    // Main camera should not render HUD objects
+    const hudObjects = this.hudRenderer.getAllObjects();
+    this.cameras.main.ignore(hudObjects);
+
+    // HUD camera should only render HUD objects — ignore the game world image
+    this.hudCamera.ignore(this.asciiRenderer.getImage());
+
     // Set initial environment
     const initPeriod = this.timeClock.getCurrentPeriod();
     this.asciiRenderer.setEnvironment(initPeriod.season, this.weatherEngine.getCurrentWeather());
 
     // Add decorative elements after systems init
     this.addGroundDecoration(soilMap);
+
+    // Apply initial view mode (Hedge view by default)
+    this.applyViewMode();
   }
 
   update(_time: number, delta: number): void {
@@ -243,6 +268,16 @@ export class GameScene extends Phaser.Scene {
       case 'Enter':
         this.tryPlant();
         break;
+
+      // Cycle view mode
+      case 'v': case 'V':
+        this.cycleViewMode();
+        break;
+
+      // Restart game
+      case 'r': case 'R':
+        this.restartGame();
+        break;
     }
   }
 
@@ -277,6 +312,62 @@ export class GameScene extends Phaser.Scene {
     this.growthSim.addPlant(species.id, col, this.groundRow, this.timeClock.getTotalPeriods());
     this.plantRenderer.renderPlants(this.growthSim.getPlants(), this.timeClock.getCurrentPeriod().season);
     this.hudRenderer.showMessage(`Planted ${species.name}!`);
+  }
+
+  private restartGame(): void {
+    // Save current score before restarting
+    const plants = this.growthSim.getPlants();
+    saveHighScore({
+      name: this.playerName,
+      plants: plants.length,
+      creatures: this.creatureSim.getTotalCount(),
+      periods: this.timeClock.getTotalPeriods(),
+    });
+    this.scene.start('SplashScene');
+  }
+
+  private cycleViewMode(): void {
+    this.viewMode = (this.viewMode + 1) % 3 as ViewMode;
+    this.applyViewMode();
+    const names = ['Hedge', 'Underground', 'Full'];
+    this.hudRenderer.showMessage(`View: ${names[this.viewMode]}  [V to cycle]`);
+  }
+
+  private applyViewMode(): void {
+    const cam = this.cameras.main;
+    const worldWidth = this.asciiRenderer.getWorldWidth();
+    const ch = GRID_CONFIG.cellHeight;
+
+    // Ground row is the boundary between above/below
+    const groundBottom = (this.groundRow + 1) * ch;
+
+    switch (this.viewMode) {
+      case ViewMode.Hedge: {
+        // Sky through ground — zoom so this zone fills the viewport height
+        const zoneHeight = groundBottom;
+        cam.setZoom(cam.height / zoneHeight);
+        cam.setBounds(0, 0, worldWidth, zoneHeight);
+        cam.scrollY = 0;
+        break;
+      }
+      case ViewMode.Underground: {
+        // Ground through bedrock
+        const top = this.groundRow * ch;
+        const zoneHeight = GRID_CONFIG.rows * ch - top;
+        cam.setZoom(cam.height / zoneHeight);
+        cam.setBounds(0, top, worldWidth, zoneHeight);
+        cam.scrollY = top;
+        break;
+      }
+      case ViewMode.Full: {
+        // Everything — zoom to fit full world height
+        const totalHeight = GRID_CONFIG.rows * ch;
+        cam.setZoom(cam.height / totalHeight);
+        cam.setBounds(0, 0, worldWidth, totalHeight);
+        cam.scrollY = 0;
+        break;
+      }
+    }
   }
 
   /** Add ground-level decoration: grass tufts, soil texture, rocks, boulders, aquifers */

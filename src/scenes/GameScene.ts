@@ -324,10 +324,10 @@ export class GameScene extends Phaser.Scene {
     }
 
     // Large boulders — multi-cell grey rock formations
-    this.addBoulders(soilMap, ugStart, ugEnd);
+    // this.addBoulders(soilMap, ugStart, ugEnd);
 
     // Underground water aquifers — sinusoidal blue veins
-    this.addAquifers(ugStart, ugEnd);
+    // this.addAquifers(ugStart, ugEnd);
 
     // Sky — occasional stars/clouds
     for (let col = 0; col < GRID_CONFIG.cols; col++) {

@@ -2,17 +2,17 @@ import { GRID_CONFIG, type PlantState, type Season, type Glyph } from '@/types';
 import { SPECIES } from '@/data/species';
 import { AsciiRenderer } from '@/rendering/AsciiRenderer';
 
-/** Add a soft white glow background to root cells based on distance from trunk */
-function withRootGlow(colOff: number, rowOff: number, glyph: Glyph): Glyph {
-  if (rowOff <= 0) return glyph; // only glow underground cells
+/** Recolor root cells to white/bone/ecru shades for contrast underground */
+function withRootColor(colOff: number, rowOff: number, glyph: Glyph): Glyph {
+  if (rowOff <= 0) return glyph; // only recolor underground cells
   const dist = Math.abs(colOff) + rowOff;
-  const intensity = Math.max(0, 1 - dist * 0.12);
-  if (intensity <= 0) return glyph;
-  const base = 0x18;
-  const glow = Math.round(base + intensity * 0x28);
-  const glowB = Math.min(0xff, glow + 0x0c); // slight cool tint
-  const bg = '#' + ((glow << 16) | (glow << 8) | glowB).toString(16).padStart(6, '0');
-  return { ...glyph, bg };
+  // Fade from warm white near trunk to muted ecru at depth
+  const t = Math.min(1, dist * 0.12);
+  const r = Math.round(0xe0 - t * 0x30);
+  const g = Math.round(0xd6 - t * 0x34);
+  const b = Math.round(0xc4 - t * 0x34);
+  const fg = '#' + ((r << 16) | (g << 8) | b).toString(16).padStart(6, '0');
+  return { ...glyph, fg };
 }
 
 export class PlantRenderer {
@@ -47,7 +47,7 @@ export class PlantRenderer {
         if (absRow < 0 || absRow >= GRID_CONFIG.rows) continue;
 
         const key = `${absCol},${absRow}`;
-        this.renderer.setOverlay(absCol, absRow, withRootGlow(colOff, rowOff, glyph));
+        this.renderer.setOverlay(absCol, absRow, withRootColor(colOff, rowOff, glyph));
         this.plantCells.add(key);
       }
 
@@ -62,7 +62,7 @@ export class PlantRenderer {
           if (absRow < 0 || absRow >= GRID_CONFIG.rows) continue;
 
           const key = `${absCol},${absRow}`;
-          this.renderer.setOverlay(absCol, absRow, withRootGlow(colOff, rowOff, glyph));
+          this.renderer.setOverlay(absCol, absRow, withRootColor(colOff, rowOff, glyph));
           this.plantCells.add(key);
         }
       }

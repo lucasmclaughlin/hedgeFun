@@ -1,6 +1,24 @@
 import Phaser from 'phaser';
-import { Glyph, GRID_CONFIG } from '@/types';
+import { Glyph, GRID_CONFIG, Season, Weather } from '@/types';
 import { getBackgroundGlyph, getBackgroundColor } from './GlyphAtlas';
+
+/** Season color tints [R, G, B] offsets */
+const SEASON_TINTS: Record<Season, [number, number, number]> = {
+  [Season.Spring]: [2, 8, -2],
+  [Season.Summer]: [10, 5, -6],
+  [Season.Autumn]: [14, -4, -12],
+  [Season.Winter]: [-10, -4, 14],
+};
+
+/** Weather color tints [R, G, B] offsets */
+const WEATHER_TINTS: Record<Weather, [number, number, number]> = {
+  [Weather.Clear]: [3, 3, 4],
+  [Weather.Overcast]: [-6, -6, -4],
+  [Weather.Rain]: [-2, 4, 10],
+  [Weather.Storm]: [-10, -10, -6],
+  [Weather.Wind]: [-2, -2, 0],
+  [Weather.Frost]: [-6, 4, 16],
+};
 
 /**
  * Grid-based ASCII renderer using Phaser's Canvas.
@@ -22,6 +40,12 @@ export class AsciiRenderer {
   private cursorVisible = true;
   private cursorTimer = 0;
 
+  /** Environment state for color modulation */
+  private tintR = 0;
+  private tintG = 0;
+  private tintB = 0;
+  private animTime = 0;
+
   constructor(scene: Phaser.Scene) {
     this.scene = scene;
 
@@ -38,6 +62,15 @@ export class AsciiRenderer {
     // Initial render
     this.renderFullGrid();
     this.texture.refresh();
+  }
+
+  /** Update environment tints from current season and weather */
+  setEnvironment(season: Season, weather: Weather): void {
+    const st = SEASON_TINTS[season];
+    const wt = WEATHER_TINTS[weather];
+    this.tintR = st[0] + wt[0];
+    this.tintG = st[1] + wt[1];
+    this.tintB = st[2] + wt[2];
   }
 
   /** Set an overlay glyph at a position (for entities, plants, etc.) */
@@ -68,8 +101,28 @@ export class AsciiRenderer {
       this.cursorTimer = 0;
     }
 
+    // Advance animation time
+    this.animTime += delta;
+
     this.renderFullGrid();
     this.texture.refresh();
+  }
+
+  /** Apply environment tint + animated pulse to a hex color */
+  private modulateColor(hex: string): string {
+    const r = parseInt(hex.substring(1, 3), 16);
+    const g = parseInt(hex.substring(3, 5), 16);
+    const b = parseInt(hex.substring(5, 7), 16);
+
+    // Gentle organic breathing — two overlapping sine waves
+    const pulse = Math.sin(this.animTime * 0.0025) * 4
+                + Math.sin(this.animTime * 0.0014) * 3;
+
+    const nr = Math.max(0, Math.min(255, Math.round(r + this.tintR + pulse)));
+    const ng = Math.max(0, Math.min(255, Math.round(g + this.tintG + pulse * 0.6)));
+    const nb = Math.max(0, Math.min(255, Math.round(b + this.tintB)));
+
+    return '#' + ((nr << 16) | (ng << 8) | nb).toString(16).padStart(6, '0');
   }
 
   /** Render the entire grid to the offscreen canvas */
@@ -91,13 +144,14 @@ export class AsciiRenderer {
         const overlay = this.overlays.get(`${col},${row}`);
         const glyph = overlay ?? getBackgroundGlyph(col, row);
 
-        // Draw background
-        ctx.fillStyle = glyph.bg ?? bgColor;
+        // Draw background — apply subtle tint to overlay backgrounds
+        const baseBg = glyph.bg ?? bgColor;
+        ctx.fillStyle = overlay ? this.modulateColor(baseBg) : baseBg;
         ctx.fillRect(x, y, cellWidth, cellHeight);
 
-        // Draw character
+        // Draw character — modulate overlay fg colors for animated seasonal effect
         if (glyph.char !== ' ') {
-          ctx.fillStyle = glyph.fg;
+          ctx.fillStyle = overlay ? this.modulateColor(glyph.fg) : glyph.fg;
           // Center the character in the cell
           const textX = x + (cellWidth - ctx.measureText(glyph.char).width) / 2;
           const textY = y + (cellHeight - fontSize) / 2;

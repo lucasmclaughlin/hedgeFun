@@ -1,72 +1,72 @@
 import { Glyph, Layer, LAYER_CONFIGS } from '@/types';
 
-/** Background glyphs for each above-ground layer — muted grays */
+/** Background glyphs for each above-ground layer — muted, dark */
 const LAYER_FILL_GLYPHS: Partial<Record<Layer, Glyph[]>> = {
   [Layer.Sky]: [
-    { char: ' ', fg: '#5a5a6a' },
-    { char: '.', fg: '#4a4a5a' },
-    { char: ' ', fg: '#5a5a6a' },
-    { char: ' ', fg: '#5a5a6a' },
-    { char: '\u00B7', fg: '#6a6a7a' },
+    { char: ' ', fg: '#3a3a4a' },
+    { char: '.', fg: '#2a2a3a' },
+    { char: ' ', fg: '#3a3a4a' },
+    { char: ' ', fg: '#3a3a4a' },
+    { char: '\u00B7', fg: '#4a4a5a' },
   ],
   [Layer.UpperCanopy]: [
-    { char: ' ', fg: '#4a4a42' },
-    { char: '{', fg: '#3a3a32' },
+    { char: ' ', fg: '#2a2a24' },
+    { char: '{', fg: '#222220' },
   ],
   [Layer.MidCanopy]: [
-    { char: ' ', fg: '#3a3a32' },
-    { char: '|', fg: '#333328' },
+    { char: ' ', fg: '#222220' },
+    { char: '|', fg: '#1e1e18' },
   ],
   [Layer.LowerShrub]: [
-    { char: ' ', fg: '#4a4a3a' },
-    { char: '.', fg: '#3a3a30' },
-    { char: ' ', fg: '#4a4a3a' },
+    { char: ' ', fg: '#2a2a22' },
+    { char: '.', fg: '#222218' },
+    { char: ' ', fg: '#2a2a22' },
   ],
   [Layer.Ground]: [
-    { char: '.', fg: '#6a6050' },
-    { char: ',', fg: '#5a5545' },
-    { char: '.', fg: '#706555' },
-    { char: '_', fg: '#6a6050' },
-    { char: ' ', fg: '#504a3a' },
+    { char: '.', fg: '#504a3a' },
+    { char: ',', fg: '#484230' },
+    { char: '.', fg: '#554a3a' },
+    { char: '_', fg: '#504a3a' },
+    { char: ' ', fg: '#3a3528' },
   ],
 };
 
-/** Soil sublayer fill glyphs — row-aware underground */
+/** Soil sublayer fill glyphs — dark underground */
 const TOPSOIL_GLYPHS: Glyph[] = [
-  { char: '%', fg: '#5a4a30' },
-  { char: '~', fg: '#4a3a22' },
-  { char: '.', fg: '#6a5a40' },
-  { char: ',', fg: '#5a4a30' },
-  { char: ' ', fg: '#3a3020' },
-  { char: ' ', fg: '#3a3020' },
-  { char: ' ', fg: '#3a3020' },
+  { char: '%', fg: '#3a3020' },
+  { char: '~', fg: '#302818' },
+  { char: '.', fg: '#4a3a28' },
+  { char: ',', fg: '#3a3020' },
+  { char: ' ', fg: '#201a12' },
+  { char: ' ', fg: '#201a12' },
+  { char: ' ', fg: '#201a12' },
 ];
 
 const SUBSOIL_GLYPHS: Glyph[] = [
-  { char: '~', fg: '#5a5040' },
-  { char: '.', fg: '#4a4535' },
-  { char: 'o', fg: '#5a5550' },
-  { char: ' ', fg: '#3a3530' },
-  { char: '-', fg: '#4a4540' },
-  { char: ' ', fg: '#3a3530' },
-  { char: ' ', fg: '#3a3530' },
+  { char: '~', fg: '#3a3528' },
+  { char: '.', fg: '#302c22' },
+  { char: 'o', fg: '#3a3830' },
+  { char: ' ', fg: '#222018' },
+  { char: '-', fg: '#302c24' },
+  { char: ' ', fg: '#222018' },
+  { char: ' ', fg: '#222018' },
 ];
 
 const BEDROCK_GLYPHS: Glyph[] = [
-  { char: 'O', fg: '#5a5a60' },
-  { char: 'o', fg: '#4a4a55' },
-  { char: '@', fg: '#555560' },
-  { char: '#', fg: '#4a4a50' },
-  { char: '.', fg: '#3a3a42' },
-  { char: ' ', fg: '#2a2a32' },
-  { char: ' ', fg: '#2a2a32' },
-  { char: ' ', fg: '#2a2a32' },
+  { char: 'O', fg: '#3a3a42' },
+  { char: 'o', fg: '#303038' },
+  { char: '@', fg: '#353540' },
+  { char: '#', fg: '#303035' },
+  { char: '.', fg: '#24242c' },
+  { char: ' ', fg: '#18181e' },
+  { char: ' ', fg: '#18181e' },
+  { char: ' ', fg: '#18181e' },
 ];
 
-/** Soil sublayer background colors */
-const TOPSOIL_BG = '#2e2822';
-const SUBSOIL_BG = '#2a2620';
-const BEDROCK_BG = '#24242a';
+/** Soil sublayer background colors — very dark */
+const TOPSOIL_BG = '#1c1810';
+const SUBSOIL_BG = '#18150e';
+const BEDROCK_BG = '#141418';
 
 /** Get the layer for a given row */
 export function getLayerForRow(row: number): Layer {
@@ -93,7 +93,7 @@ export function getBackgroundGlyph(col: number, row: number): Glyph {
 
   const layer = getLayerForRow(row);
   const glyphs = LAYER_FILL_GLYPHS[layer];
-  if (!glyphs) return { char: ' ', fg: '#333333' };
+  if (!glyphs) return { char: ' ', fg: '#222222' };
   return pickGlyph(glyphs, col, row);
 }
 

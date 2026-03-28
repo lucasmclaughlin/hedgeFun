@@ -76,14 +76,12 @@ export const SPECIES: Record<string, SpeciesDef> = {
           [1, -5, { char: '\\', fg: '#5a9a2a' }],
           [-2, -5, { char: '{', fg: '#4a8a2a' }],
           [2, -5, { char: '}', fg: '#4a8a2a' }],
-          // upper canopy
+          // upper canopy (base foliage — berries/flowers added seasonally)
           [-1, -6, { char: '{', fg: '#4a8a2a' }],
           [0, -6, { char: '@', fg: '#5aaa3a' }],
           [1, -6, { char: '}', fg: '#4a8a2a' }],
           [-1, -7, { char: '(', fg: '#5aaa3a' }],
-          [0, -7, { char: '*', fg: '#ea4a4a' }], // berries
           [1, -7, { char: ')', fg: '#5aaa3a' }],
-          [0, -8, { char: '*', fg: '#ea4a4a' }], // berries
           [-1, -8, { char: '{', fg: '#5aaa3a' }],
           [1, -8, { char: '}', fg: '#5aaa3a' }],
           [0, -9, { char: '^', fg: '#6aba4a' }],
@@ -113,6 +111,24 @@ export const SPECIES: Record<string, SpeciesDef> = {
           [1, 4, { char: '.', fg: '#2a1800' }],
           [0, 5, { char: '.', fg: '#2a1800' }],
         ],
+        seasonalCells: {
+          [Season.Spring]: [
+            // White May blossom
+            [0, -7, { char: '*', fg: '#ffffff' }],
+            [0, -8, { char: '*', fg: '#eeeeee' }],
+          ],
+          [Season.Summer]: [
+            // Dense green foliage
+            [0, -7, { char: '@', fg: '#5aaa3a' }],
+            [0, -8, { char: '@', fg: '#5a9a2a' }],
+          ],
+          [Season.Autumn]: [
+            // Red haw berries
+            [0, -7, { char: '*', fg: '#ea4a4a' }],
+            [0, -8, { char: '*', fg: '#ea4a4a' }],
+          ],
+          // Winter: bare — no decoration cells
+        },
       },
     },
   },
@@ -190,10 +206,7 @@ export const SPECIES: Record<string, SpeciesDef> = {
           [1, -3, { char: '#', fg: '#3a6a1a' }],
           [-2, -3, { char: '+', fg: '#4a7a2a' }],
           [2, -3, { char: '+', fg: '#4a7a2a' }],
-          // sloe berries at top
-          [-1, -4, { char: '*', fg: '#2a2a8a' }],
-          [1, -4, { char: '*', fg: '#2a2a8a' }],
-          [-1, -5, { char: '*', fg: '#2a2a8a' }],
+          // top (base — sloe berries/flowers added seasonally)
           [1, -5, { char: '#', fg: '#4a7a2a' }],
           [0, -6, { char: '^', fg: '#5a8a3a' }],
           // roots — wide spreading suckers
@@ -212,6 +225,27 @@ export const SPECIES: Record<string, SpeciesDef> = {
           [2, 3, { char: '.', fg: '#2a1800' }],
           [0, 4, { char: '.', fg: '#1a1000' }],
         ],
+        seasonalCells: {
+          [Season.Spring]: [
+            // White blossom (blooms before leaves)
+            [-1, -4, { char: '*', fg: '#ffffff' }],
+            [1, -4, { char: '*', fg: '#ffffff' }],
+            [-1, -5, { char: '*', fg: '#eeeeee' }],
+          ],
+          [Season.Summer]: [
+            // Dense foliage
+            [-1, -4, { char: '#', fg: '#3a6a1a' }],
+            [1, -4, { char: '#', fg: '#3a6a1a' }],
+            [-1, -5, { char: '#', fg: '#4a7a2a' }],
+          ],
+          [Season.Autumn]: [
+            // Sloe berries
+            [-1, -4, { char: '*', fg: '#2a2a8a' }],
+            [1, -4, { char: '*', fg: '#2a2a8a' }],
+            [-1, -5, { char: '*', fg: '#2a2a8a' }],
+          ],
+          // Winter: bare thorny branches
+        },
       },
     },
   },
@@ -256,10 +290,8 @@ export const SPECIES: Record<string, SpeciesDef> = {
           [0, -1, { char: 'f', fg: '#5a9a3a' }],
           [-1, -1, { char: '@', fg: '#5aaa3a' }],
           [1, -1, { char: '@', fg: '#5aaa3a' }],
-          [0, -2, { char: '*', fg: '#eaea9a' }],
           [-1, -2, { char: '@', fg: '#5aaa3a' }],
           [1, -2, { char: '@', fg: '#5aaa3a' }],
-          [0, -3, { char: '*', fg: '#eaea9a' }],
           [0, -4, { char: '^', fg: '#6aaa3a' }],
           // roots
           [0, 1, { char: '|', fg: '#4a2a0a' }],
@@ -267,6 +299,23 @@ export const SPECIES: Record<string, SpeciesDef> = {
           [1, 1, { char: '/', fg: '#3a1a00' }],
           [0, 2, { char: '.', fg: '#2a1800' }],
         ],
+        seasonalCells: {
+          [Season.Spring]: [
+            // Cream flowers
+            [0, -2, { char: '*', fg: '#eaea9a' }],
+            [0, -3, { char: '*', fg: '#eaea9a' }],
+          ],
+          [Season.Summer]: [
+            // Green foliage
+            [0, -2, { char: '@', fg: '#5aaa3a' }],
+            [0, -3, { char: '@', fg: '#5a9a3a' }],
+          ],
+          [Season.Autumn]: [
+            // Dark elderberries
+            [0, -2, { char: '*', fg: '#4a1a4a' }],
+            [0, -3, { char: '*', fg: '#4a1a4a' }],
+          ],
+        },
       },
       [GrowthStage.Mature]: {
         cells: [
@@ -275,7 +324,7 @@ export const SPECIES: Record<string, SpeciesDef> = {
           [0, -1, { char: '|', fg: '#6a5a2a' }],
           [0, -2, { char: '|', fg: '#5a4a1a' }],
           [0, -3, { char: 'Y', fg: '#5a4a1a' }],
-          // canopy
+          // canopy (base foliage)
           [-1, -3, { char: '/', fg: '#4a9a2a' }],
           [1, -3, { char: '\\', fg: '#4a9a2a' }],
           [-1, -4, { char: '@', fg: '#4a9a2a' }],
@@ -283,10 +332,8 @@ export const SPECIES: Record<string, SpeciesDef> = {
           [1, -4, { char: '@', fg: '#4a9a2a' }],
           [-2, -4, { char: '(', fg: '#5a9a3a' }],
           [2, -4, { char: ')', fg: '#5a9a3a' }],
-          [-1, -5, { char: '*', fg: '#eaea9a' }], // flowers
+          // upper canopy (base — flowers/berries added seasonally)
           [0, -5, { char: '@', fg: '#5aaa3a' }],
-          [1, -5, { char: '*', fg: '#eaea9a' }],
-          [0, -6, { char: '*', fg: '#4a1a4a' }], // elderberries
           [-1, -6, { char: '@', fg: '#5aaa3a' }],
           [1, -6, { char: '@', fg: '#5aaa3a' }],
           [0, -7, { char: '^', fg: '#6aba4a' }],
@@ -304,6 +351,27 @@ export const SPECIES: Record<string, SpeciesDef> = {
           [1, 2, { char: '~', fg: '#3a2000' }],
           [0, 3, { char: '.', fg: '#2a1800' }],
         ],
+        seasonalCells: {
+          [Season.Spring]: [
+            // Fragrant cream elderflowers
+            [-1, -5, { char: '*', fg: '#eaea9a' }],
+            [1, -5, { char: '*', fg: '#eaea9a' }],
+            [0, -6, { char: '*', fg: '#eaea9a' }],
+          ],
+          [Season.Summer]: [
+            // Dense green
+            [-1, -5, { char: '@', fg: '#4a9a2a' }],
+            [1, -5, { char: '@', fg: '#4a9a2a' }],
+            [0, -6, { char: '@', fg: '#5aaa3a' }],
+          ],
+          [Season.Autumn]: [
+            // Dark elderberries
+            [-1, -5, { char: '*', fg: '#4a1a4a' }],
+            [1, -5, { char: '*', fg: '#4a1a4a' }],
+            [0, -6, { char: '*', fg: '#4a1a4a' }],
+          ],
+          // Winter: bare
+        },
       },
     },
   },
@@ -353,11 +421,7 @@ export const SPECIES: Record<string, SpeciesDef> = {
           [0, -3, { char: '@', fg: '#6a9a3a' }],
           [-1, -3, { char: '{', fg: '#7aaa4a' }],
           [1, -3, { char: '}', fg: '#7aaa4a' }],
-          [0, -4, { char: 'O', fg: '#9a7a3a' }], // nuts
           [0, -5, { char: '^', fg: '#7aaa4a' }],
-          // catkins
-          [-1, -4, { char: ':', fg: '#caba3a' }],
-          [1, -4, { char: ':', fg: '#caba3a' }],
           // roots — deep taproot
           [0, 1, { char: '|', fg: '#5a3a0a' }],
           [-1, 1, { char: '\\', fg: '#4a2a00' }],
@@ -367,6 +431,26 @@ export const SPECIES: Record<string, SpeciesDef> = {
           [-1, 3, { char: '~', fg: '#3a2000' }],
           [1, 3, { char: '~', fg: '#3a2000' }],
         ],
+        seasonalCells: {
+          [Season.Spring]: [
+            // Catkins
+            [-1, -4, { char: ':', fg: '#caba3a' }],
+            [1, -4, { char: ':', fg: '#caba3a' }],
+            [0, -4, { char: '@', fg: '#6a9a3a' }],
+          ],
+          [Season.Summer]: [
+            // Foliage
+            [-1, -4, { char: '{', fg: '#7aaa4a' }],
+            [1, -4, { char: '}', fg: '#7aaa4a' }],
+            [0, -4, { char: '@', fg: '#6a9a3a' }],
+          ],
+          [Season.Autumn]: [
+            // Nuts
+            [0, -4, { char: 'O', fg: '#9a7a3a' }],
+            [-1, -4, { char: '{', fg: '#7aaa4a' }],
+            [1, -4, { char: '}', fg: '#7aaa4a' }],
+          ],
+        },
       },
       [GrowthStage.Mature]: {
         cells: [
@@ -378,16 +462,14 @@ export const SPECIES: Record<string, SpeciesDef> = {
           [0, -4, { char: '|', fg: '#5a3a0a' }],
           [0, -5, { char: '|', fg: '#5a3a0a' }],
           [0, -6, { char: 'Y', fg: '#5a3a0a' }],
-          // canopy with nuts
+          // canopy (base foliage — nuts/catkins added seasonally)
           [-1, -7, { char: '{', fg: '#6a9a3a' }],
           [0, -7, { char: '@', fg: '#7aaa4a' }],
           [1, -7, { char: '}', fg: '#6a9a3a' }],
           [-2, -7, { char: '(', fg: '#5a8a2a' }],
           [2, -7, { char: ')', fg: '#5a8a2a' }],
           [-1, -8, { char: '{', fg: '#6a9a3a' }],
-          [0, -8, { char: 'O', fg: '#ba8a3a' }], // hazelnuts
           [1, -8, { char: '}', fg: '#6a9a3a' }],
-          [0, -9, { char: 'O', fg: '#ba8a3a' }], // hazelnuts
           [-1, -9, { char: '{', fg: '#7aaa4a' }],
           [1, -9, { char: '}', fg: '#7aaa4a' }],
           [0, -10, { char: '@', fg: '#7aaa4a' }],
@@ -397,9 +479,6 @@ export const SPECIES: Record<string, SpeciesDef> = {
           [1, -6, { char: '\\', fg: '#7aaa4a' }],
           [-2, -6, { char: '{', fg: '#6a9a3a' }],
           [2, -6, { char: '}', fg: '#6a9a3a' }],
-          // catkins
-          [-1, -5, { char: ':', fg: '#caba3a' }],
-          [1, -5, { char: ':', fg: '#caba3a' }],
           [-1, -4, { char: '{', fg: '#6a9a3a' }],
           [1, -4, { char: '}', fg: '#6a9a3a' }],
           [-1, -3, { char: '/', fg: '#7aaa4a' }],
@@ -424,6 +503,30 @@ export const SPECIES: Record<string, SpeciesDef> = {
           [0, 5, { char: '.', fg: '#2a1800' }],
           [0, 6, { char: '.', fg: '#1a1000' }],
         ],
+        seasonalCells: {
+          [Season.Spring]: [
+            // Dangling catkins
+            [-1, -5, { char: ':', fg: '#caba3a' }],
+            [1, -5, { char: ':', fg: '#caba3a' }],
+            [0, -8, { char: '@', fg: '#7aaa4a' }],
+            [0, -9, { char: '@', fg: '#6a9a3a' }],
+          ],
+          [Season.Summer]: [
+            // Full foliage
+            [-1, -5, { char: '{', fg: '#6a9a3a' }],
+            [1, -5, { char: '}', fg: '#6a9a3a' }],
+            [0, -8, { char: '@', fg: '#7aaa4a' }],
+            [0, -9, { char: '@', fg: '#7aaa4a' }],
+          ],
+          [Season.Autumn]: [
+            // Hazelnuts
+            [-1, -5, { char: '{', fg: '#6a9a3a' }],
+            [1, -5, { char: '}', fg: '#6a9a3a' }],
+            [0, -8, { char: 'O', fg: '#ba8a3a' }],
+            [0, -9, { char: 'O', fg: '#ba8a3a' }],
+          ],
+          // Winter: bare
+        },
       },
     },
   },
@@ -466,11 +569,9 @@ export const SPECIES: Record<string, SpeciesDef> = {
         cells: [
           [0, 0, { char: '&', fg: '#5a8a2a' }],
           [-1, -1, { char: '~', fg: '#6aaa3a' }],
-          [0, -1, { char: '*', fg: '#ea8a9a' }],
           [1, -1, { char: '~', fg: '#6aaa3a' }],
           [1, 0, { char: '~', fg: '#6aaa3a' }],
           [-1, 0, { char: '~', fg: '#6aaa3a' }],
-          [0, -2, { char: '*', fg: '#ea6a7a' }],
           [-1, -2, { char: '~', fg: '#5a9a2a' }],
           [1, -2, { char: '~', fg: '#5a9a2a' }],
           // roots
@@ -479,31 +580,39 @@ export const SPECIES: Record<string, SpeciesDef> = {
           [1, 1, { char: '~', fg: '#3a2000' }],
           [0, 2, { char: '.', fg: '#2a1800' }],
         ],
+        seasonalCells: {
+          [Season.Spring]: [
+            // Green buds
+            [0, -1, { char: ',', fg: '#7aba4a' }],
+            [0, -2, { char: ',', fg: '#7aba4a' }],
+          ],
+          [Season.Summer]: [
+            // Pink flowers
+            [0, -1, { char: '*', fg: '#ea8a9a' }],
+            [0, -2, { char: '*', fg: '#ea6a7a' }],
+          ],
+          [Season.Autumn]: [
+            // Small rosehips
+            [0, -1, { char: 'o', fg: '#ea4a2a' }],
+            [0, -2, { char: 'o', fg: '#ea4a2a' }],
+          ],
+        },
       },
       [GrowthStage.Mature]: {
         cells: [
-          // climbing scrambler
+          // climbing scrambler (base structure)
           [0, 0, { char: '&', fg: '#5a8a2a' }],
           [-1, 0, { char: '~', fg: '#6aaa3a' }],
           [1, 0, { char: '~', fg: '#6aaa3a' }],
           [-2, 0, { char: '~', fg: '#5a9a2a' }],
           [2, 0, { char: '~', fg: '#5a9a2a' }],
-          [-1, -1, { char: '*', fg: '#ea8a9a' }],
           [0, -1, { char: '~', fg: '#5a9a2a' }],
-          [1, -1, { char: '*', fg: '#ea8a9a' }],
           [-2, -1, { char: '~', fg: '#6aaa3a' }],
           [2, -1, { char: '~', fg: '#6aaa3a' }],
-          [0, -2, { char: '*', fg: '#ea6a7a' }],
           [-1, -2, { char: '~', fg: '#5a9a2a' }],
           [1, -2, { char: '~', fg: '#5a9a2a' }],
-          [-2, -2, { char: '*', fg: '#ea8a9a' }],
-          [2, -2, { char: '*', fg: '#ea8a9a' }],
-          // rosehips
-          [0, -3, { char: 'o', fg: '#ea4a2a' }],
           [-1, -3, { char: '~', fg: '#6aaa3a' }],
-          [1, -3, { char: 'o', fg: '#ea4a2a' }],
           [0, -4, { char: '~', fg: '#5a9a2a' }],
-          [-1, -4, { char: 'o', fg: '#ea4a2a' }],
           [1, -4, { char: '~', fg: '#5a9a2a' }],
           [0, -5, { char: '^', fg: '#6aaa3a' }],
           // roots — shallow scrambler
@@ -517,6 +626,42 @@ export const SPECIES: Record<string, SpeciesDef> = {
           [1, 2, { char: '.', fg: '#2a1800' }],
           [0, 3, { char: '.', fg: '#2a1800' }],
         ],
+        seasonalCells: {
+          [Season.Spring]: [
+            // Green buds
+            [-1, -1, { char: ',', fg: '#7aba4a' }],
+            [1, -1, { char: ',', fg: '#7aba4a' }],
+            [0, -2, { char: ',', fg: '#7aba4a' }],
+            [-2, -2, { char: ',', fg: '#7aba4a' }],
+            [2, -2, { char: ',', fg: '#7aba4a' }],
+            [0, -3, { char: '~', fg: '#6aaa3a' }],
+            [1, -3, { char: '~', fg: '#6aaa3a' }],
+            [-1, -4, { char: '~', fg: '#5a9a2a' }],
+          ],
+          [Season.Summer]: [
+            // Pink flowers in bloom
+            [-1, -1, { char: '*', fg: '#ea8a9a' }],
+            [1, -1, { char: '*', fg: '#ea8a9a' }],
+            [0, -2, { char: '*', fg: '#ea6a7a' }],
+            [-2, -2, { char: '*', fg: '#ea8a9a' }],
+            [2, -2, { char: '*', fg: '#ea8a9a' }],
+            [0, -3, { char: '*', fg: '#ea6a7a' }],
+            [1, -3, { char: '~', fg: '#6aaa3a' }],
+            [-1, -4, { char: '*', fg: '#ea8a9a' }],
+          ],
+          [Season.Autumn]: [
+            // Red rosehips
+            [-1, -1, { char: '~', fg: '#6aaa3a' }],
+            [1, -1, { char: '~', fg: '#6aaa3a' }],
+            [0, -2, { char: '~', fg: '#5a9a2a' }],
+            [-2, -2, { char: '~', fg: '#5a9a2a' }],
+            [2, -2, { char: '~', fg: '#5a9a2a' }],
+            [0, -3, { char: 'o', fg: '#ea4a2a' }],
+            [1, -3, { char: 'o', fg: '#ea4a2a' }],
+            [-1, -4, { char: 'o', fg: '#ea4a2a' }],
+          ],
+          // Winter: bare scrambler
+        },
       },
     },
   },
@@ -568,9 +713,6 @@ export const SPECIES: Record<string, SpeciesDef> = {
           [0, -3, { char: '#', fg: '#2a6a1a' }],
           [0, -4, { char: '#', fg: '#3a7a2a' }],
           [0, -5, { char: '^', fg: '#3a8a2a' }],
-          // berries
-          [-1, -3, { char: '*', fg: '#ea2a2a' }],
-          [1, -3, { char: '*', fg: '#ea2a2a' }],
           // roots
           [0, 1, { char: '|', fg: '#4a2a0a' }],
           [-1, 1, { char: '\\', fg: '#3a1a00' }],
@@ -580,6 +722,26 @@ export const SPECIES: Record<string, SpeciesDef> = {
           [-1, 3, { char: '~', fg: '#2a1800' }],
           [1, 3, { char: '~', fg: '#2a1800' }],
         ],
+        seasonalCells: {
+          // Holly berries appear in autumn and persist through winter
+          [Season.Autumn]: [
+            [-1, -3, { char: '*', fg: '#ea2a2a' }],
+            [1, -3, { char: '*', fg: '#ea2a2a' }],
+          ],
+          [Season.Winter]: [
+            [-1, -3, { char: '*', fg: '#ea2a2a' }],
+            [1, -3, { char: '*', fg: '#ea2a2a' }],
+          ],
+          [Season.Spring]: [
+            // Evergreen — extra dense foliage
+            [-1, -3, { char: '#', fg: '#2a6a1a' }],
+            [1, -3, { char: '#', fg: '#2a6a1a' }],
+          ],
+          [Season.Summer]: [
+            [-1, -3, { char: '#', fg: '#2a6a1a' }],
+            [1, -3, { char: '#', fg: '#2a6a1a' }],
+          ],
+        },
       },
       [GrowthStage.Mature]: {
         cells: [
@@ -594,8 +756,6 @@ export const SPECIES: Record<string, SpeciesDef> = {
           [-2, -2, { char: '#', fg: '#3a7a2a' }],
           [2, -2, { char: '#', fg: '#3a7a2a' }],
           [0, -3, { char: '#', fg: '#1a5a0a' }],
-          [-1, -3, { char: '*', fg: '#ea2a2a' }], // berries
-          [1, -3, { char: '*', fg: '#ea2a2a' }],
           [-2, -3, { char: '#', fg: '#2a6a1a' }],
           [2, -3, { char: '#', fg: '#2a6a1a' }],
           [0, -4, { char: '#', fg: '#2a6a1a' }],
@@ -610,8 +770,6 @@ export const SPECIES: Record<string, SpeciesDef> = {
           [-1, -6, { char: '#', fg: '#3a7a2a' }],
           [1, -6, { char: '#', fg: '#3a7a2a' }],
           [0, -7, { char: '#', fg: '#3a7a2a' }],
-          [-1, -7, { char: '*', fg: '#ea2a2a' }], // berries
-          [1, -7, { char: '*', fg: '#ea2a2a' }],
           [0, -8, { char: '#', fg: '#3a8a2a' }],
           [-1, -8, { char: '#', fg: '#2a6a1a' }],
           [1, -8, { char: '#', fg: '#2a6a1a' }],
@@ -632,6 +790,36 @@ export const SPECIES: Record<string, SpeciesDef> = {
           [1, 4, { char: '.', fg: '#1a1000' }],
           [0, 5, { char: '.', fg: '#1a1000' }],
         ],
+        seasonalCells: {
+          [Season.Spring]: [
+            // Evergreen — dense foliage, no berries
+            [-1, -3, { char: '#', fg: '#2a6a1a' }],
+            [1, -3, { char: '#', fg: '#2a6a1a' }],
+            [-1, -7, { char: '#', fg: '#3a7a2a' }],
+            [1, -7, { char: '#', fg: '#3a7a2a' }],
+          ],
+          [Season.Summer]: [
+            // Evergreen — dense foliage, no berries
+            [-1, -3, { char: '#', fg: '#2a6a1a' }],
+            [1, -3, { char: '#', fg: '#2a6a1a' }],
+            [-1, -7, { char: '#', fg: '#3a7a2a' }],
+            [1, -7, { char: '#', fg: '#3a7a2a' }],
+          ],
+          [Season.Autumn]: [
+            // Red berries appearing
+            [-1, -3, { char: '*', fg: '#ea2a2a' }],
+            [1, -3, { char: '*', fg: '#ea2a2a' }],
+            [-1, -7, { char: '*', fg: '#ea2a2a' }],
+            [1, -7, { char: '*', fg: '#ea2a2a' }],
+          ],
+          [Season.Winter]: [
+            // Classic holly with red berries
+            [-1, -3, { char: '*', fg: '#ea2a2a' }],
+            [1, -3, { char: '*', fg: '#ea2a2a' }],
+            [-1, -7, { char: '*', fg: '#ea2a2a' }],
+            [1, -7, { char: '*', fg: '#ea2a2a' }],
+          ],
+        },
       },
     },
   },

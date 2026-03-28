@@ -35,14 +35,14 @@ export interface GridConfig {
   fontFamily: string;
 }
 
-/** All layer definitions with row ranges — muted gray palette */
+/** All layer definitions with row ranges — dark palette for contrast */
 export const LAYER_CONFIGS: LayerConfig[] = [
-  { layer: Layer.Sky,          name: 'Sky',           startRow: 0,  endRow: 7,  bgColor: '#22252e', fgColor: '#6a6a8a' },
-  { layer: Layer.UpperCanopy,  name: 'Upper Canopy',  startRow: 8,  endRow: 11, bgColor: '#262926', fgColor: '#5a5a4a' },
-  { layer: Layer.MidCanopy,    name: 'Mid Canopy',    startRow: 12, endRow: 14, bgColor: '#282a26', fgColor: '#4a4a3a' },
-  { layer: Layer.LowerShrub,   name: 'Lower Shrub',   startRow: 15, endRow: 19, bgColor: '#302e28', fgColor: '#5a5a4a' },
-  { layer: Layer.Ground,       name: 'Ground',        startRow: 20, endRow: 20, bgColor: '#3a3528', fgColor: '#7a7050' },
-  { layer: Layer.Underground,  name: 'Underground',   startRow: 21, endRow: 54, bgColor: '#2a2520', fgColor: '#5a5040' },
+  { layer: Layer.Sky,          name: 'Sky',           startRow: 0,  endRow: 7,  bgColor: '#14161e', fgColor: '#6a6a8a' },
+  { layer: Layer.UpperCanopy,  name: 'Upper Canopy',  startRow: 8,  endRow: 11, bgColor: '#181a18', fgColor: '#5a5a4a' },
+  { layer: Layer.MidCanopy,    name: 'Mid Canopy',    startRow: 12, endRow: 14, bgColor: '#1a1c18', fgColor: '#4a4a3a' },
+  { layer: Layer.LowerShrub,   name: 'Lower Shrub',   startRow: 15, endRow: 19, bgColor: '#201e1a', fgColor: '#5a5a4a' },
+  { layer: Layer.Ground,       name: 'Ground',        startRow: 20, endRow: 20, bgColor: '#2a261e', fgColor: '#7a7050' },
+  { layer: Layer.Underground,  name: 'Underground',   startRow: 21, endRow: 54, bgColor: '#1a1814', fgColor: '#5a5040' },
 ];
 
 export const GRID_CONFIG: GridConfig = {
@@ -93,6 +93,8 @@ export enum GrowthStage {
 export interface StageVisual {
   /** [colOffset, rowOffset, glyph] — row 0 = root row, negative = above ground */
   cells: Array<[number, number, Glyph]>;
+  /** Season-specific decoration cells (flowers, fruit, berries) drawn on top of base cells */
+  seasonalCells?: Partial<Record<Season, Array<[number, number, Glyph]>>>;
 }
 
 /** Species definition — pure data */

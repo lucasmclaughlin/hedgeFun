@@ -11,6 +11,14 @@ import { HudRenderer } from '@/ui/HudRenderer';
 import { SPECIES_LIST } from '@/data/species';
 import type { PlantState } from '@/types';
 
+/** Deterministic hash for boulder/aquifer placement */
+function hash(x: number, y: number): number {
+  let h = x * 374761393 + y * 668265263;
+  h = (h ^ (h >> 13)) * 1274126177;
+  h = h ^ (h >> 16);
+  return (h & 0x7fffffff) / 0x7fffffff;
+}
+
 export class GameScene extends Phaser.Scene {
   private asciiRenderer!: AsciiRenderer;
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
@@ -128,6 +136,10 @@ export class GameScene extends Phaser.Scene {
     this.weatherEngine = new WeatherEngine(this.asciiRenderer);
     this.hudRenderer = new HudRenderer(this);
 
+    // Set initial environment
+    const initPeriod = this.timeClock.getCurrentPeriod();
+    this.asciiRenderer.setEnvironment(initPeriod.season, this.weatherEngine.getCurrentWeather());
+
     // Add decorative elements after systems init
     this.addGroundDecoration(soilMap);
   }
@@ -155,7 +167,9 @@ export class GameScene extends Phaser.Scene {
       this.energyManager.onPeriodAdvance(period, moon);
       this.growthSim.onPeriodAdvance(period);
       this.weatherEngine.onPeriodAdvance(period);
-      this.plantRenderer.renderPlants(this.growthSim.getPlants());
+      this.plantRenderer.renderPlants(this.growthSim.getPlants(), period.season);
+      // Update environment tints when season/weather changes
+      this.asciiRenderer.setEnvironment(period.season, this.weatherEngine.getCurrentWeather());
     }
 
     // Animate weather in sky
@@ -240,11 +254,11 @@ export class GameScene extends Phaser.Scene {
 
     // Plant it
     this.growthSim.addPlant(species.id, col, this.groundRow, this.timeClock.getTotalPeriods());
-    this.plantRenderer.renderPlants(this.growthSim.getPlants());
+    this.plantRenderer.renderPlants(this.growthSim.getPlants(), this.timeClock.getCurrentPeriod().season);
     this.hudRenderer.showMessage(`Planted ${species.name}!`);
   }
 
-  /** Add ground-level decoration: grass tufts, soil texture, rocks */
+  /** Add ground-level decoration: grass tufts, soil texture, rocks, boulders, aquifers */
   private addGroundDecoration(soilMap: SoilMap): void {
     const groundGlyphs = [
       { char: '"', fg: '#7aba4a' },
@@ -262,9 +276,10 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
-    // Underground: soil-aware decoration using SoilMap data
     const ugStart = this.undergroundConfig.startRow;
     const ugEnd = this.undergroundConfig.endRow;
+
+    // Underground: soil-aware decoration using SoilMap data
     for (let col = 0; col < GRID_CONFIG.cols; col++) {
       for (let row = ugStart; row <= ugEnd; row++) {
         const cell = soilMap.getSoilAt(col, row);
@@ -273,19 +288,25 @@ export class GameScene extends Phaser.Scene {
         if (cell.rockDensity > 0.7 && Math.random() < 0.15) {
           const rockChars = ['O', '@', '#'];
           const ch = rockChars[Math.floor(Math.random() * rockChars.length)];
-          this.asciiRenderer.setOverlay(col, row, { char: ch, fg: '#6a6a70' });
+          this.asciiRenderer.setOverlay(col, row, { char: ch, fg: '#4a4a52' });
         } else if (cell.rockDensity > 0.4 && Math.random() < 0.08) {
-          this.asciiRenderer.setOverlay(col, row, { char: 'o', fg: '#5a5a60' });
+          this.asciiRenderer.setOverlay(col, row, { char: 'o', fg: '#3a3a42' });
         }
 
         // Fertile topsoil gets organic overlays
         if (cell.fertility > 0.8 && Math.random() < 0.06) {
           const fertChars = ['%', 'w', '~'];
           const ch = fertChars[Math.floor(Math.random() * fertChars.length)];
-          this.asciiRenderer.setOverlay(col, row, { char: ch, fg: '#6a5a30' });
+          this.asciiRenderer.setOverlay(col, row, { char: ch, fg: '#4a3a1a' });
         }
       }
     }
+
+    // Large boulders — multi-cell grey rock formations
+    this.addBoulders(soilMap, ugStart, ugEnd);
+
+    // Underground water aquifers — sinusoidal blue veins
+    this.addAquifers(ugStart, ugEnd);
 
     // Sky — occasional stars/clouds
     for (let col = 0; col < GRID_CONFIG.cols; col++) {
@@ -294,6 +315,104 @@ export class GameScene extends Phaser.Scene {
           this.asciiRenderer.setOverlay(col, row, { char: '*', fg: '#9a9abe' });
         } else if (Math.random() < 0.01) {
           this.asciiRenderer.setOverlay(col, row, { char: '~', fg: '#5a5a7a' });
+        }
+      }
+    }
+  }
+
+  /** Place large multi-cell boulder formations in the underground */
+  private addBoulders(soilMap: SoilMap, ugStart: number, ugEnd: number): void {
+    const cols = GRID_CONFIG.cols;
+
+    // Boulder templates: arrays of [colOff, rowOff, char]
+    const boulderTemplates: Array<Array<[number, number, string]>> = [
+      // Large rounded boulder (5 cells)
+      [[-1, 0, '('], [0, 0, 'O'], [1, 0, ')'], [0, -1, '_'], [0, 1, '-']],
+      // Wide flat boulder (6 cells)
+      [[-2, 0, '('], [-1, 0, '='], [0, 0, 'O'], [1, 0, '='], [2, 0, ')'], [0, -1, '_']],
+      // Tall boulder (4 cells)
+      [[0, 0, 'O'], [0, -1, 'O'], [-1, 0, '('], [1, 0, ')']],
+      // Cluster (7 cells)
+      [[0, 0, '@'], [-1, 0, 'O'], [1, 0, 'O'], [0, -1, 'O'], [-1, -1, '('], [1, -1, ')'], [0, 1, '_']],
+      // Small boulder (3 cells)
+      [[-1, 0, '('], [0, 0, 'O'], [1, 0, ')']],
+    ];
+
+    const boulderColors = ['#5a5a66', '#6a6a72', '#505060', '#585868', '#626270'];
+
+    // Seed boulders using deterministic hash — ~1 every 15-25 cols
+    for (let col = 5; col < cols - 5; col++) {
+      // Check multiple depth zones for boulder placement
+      for (let depthZone = 0; depthZone < 3; depthZone++) {
+        const baseRow = ugStart + 4 + depthZone * 10;
+        if (baseRow > ugEnd - 2) continue;
+
+        const h = hash(col, baseRow + depthZone * 1000);
+        if (h > 0.06) continue; // ~6% chance per col per zone
+
+        // Pick template and position
+        const row = baseRow + Math.floor(hash(col + 1, baseRow) * 6) - 3;
+        if (row < ugStart + 1 || row > ugEnd - 1) continue;
+
+        // Only place in rocky areas
+        const cell = soilMap.getSoilAt(col, row);
+        if (cell.rockDensity < 0.3) continue;
+
+        const templateIdx = Math.floor(hash(col + 2, row) * boulderTemplates.length);
+        const template = boulderTemplates[templateIdx];
+        const colorIdx = Math.floor(hash(col + 3, row) * boulderColors.length);
+        const baseColor = boulderColors[colorIdx];
+
+        for (const [cOff, rOff, ch] of template) {
+          const bc = col + cOff;
+          const br = row + rOff;
+          if (bc < 0 || bc >= cols || br < ugStart || br > ugEnd) continue;
+          // Slightly vary brightness per cell
+          const bright = hash(bc, br) * 0.15;
+          const r = parseInt(baseColor.substring(1, 3), 16);
+          const g = parseInt(baseColor.substring(3, 5), 16);
+          const b = parseInt(baseColor.substring(5, 7), 16);
+          const nr = Math.min(255, Math.round(r + bright * 40));
+          const ng = Math.min(255, Math.round(g + bright * 40));
+          const nb = Math.min(255, Math.round(b + bright * 40));
+          const fg = '#' + ((nr << 16) | (ng << 8) | nb).toString(16).padStart(6, '0');
+          this.asciiRenderer.setOverlay(bc, br, { char: ch, fg, bg: '#1a1a22' });
+        }
+      }
+    }
+  }
+
+  /** Place sinusoidal water aquifer veins through the underground */
+  private addAquifers(ugStart: number, ugEnd: number): void {
+    const cols = GRID_CONFIG.cols;
+
+    // Aquifer definitions: centerRow, amplitude, frequency, width, color
+    const aquifers = [
+      { centerRow: ugStart + 10, amp: 2.5, freq: 0.04, width: 2, fg: '#2a4a6a', fgBright: '#3a6a8a' },
+      { centerRow: ugStart + 22, amp: 3, freq: 0.03, width: 3, fg: '#1a3a5a', fgBright: '#2a5a7a' },
+      { centerRow: ugStart + 8, amp: 1.5, freq: 0.06, width: 1, fg: '#2a4a6a', fgBright: '#3a5a7a' },
+    ];
+
+    const waterChars = ['~', '\u2248', '.', '-', '~'];
+
+    for (const aq of aquifers) {
+      for (let col = 0; col < cols; col++) {
+        const waveY = aq.centerRow + Math.sin(col * aq.freq + aq.amp) * aq.amp;
+
+        for (let w = -aq.width; w <= aq.width; w++) {
+          const row = Math.round(waveY + w);
+          if (row < ugStart || row > ugEnd) continue;
+
+          // Density falls off from center of vein
+          const distFromCenter = Math.abs(w) / (aq.width + 1);
+          const density = 0.6 - distFromCenter * 0.4;
+          if (hash(col * 3 + w, row * 7) > density) continue;
+
+          const ch = waterChars[Math.floor(hash(col, row + w * 100) * waterChars.length)];
+          const isCenter = Math.abs(w) <= 1;
+          const fg = isCenter ? aq.fgBright : aq.fg;
+          const bg = '#101828';
+          this.asciiRenderer.setOverlay(col, row, { char: ch, fg, bg });
         }
       }
     }

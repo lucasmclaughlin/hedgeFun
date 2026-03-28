@@ -108,7 +108,7 @@ export class HudRenderer {
 
     // Milestone toast — centered, gold, longer display
     const cam = scene.cameras.main;
-    this.milestoneToast = scene.add.text(cam.width / 2, cam.height - 60, '', {
+    this.milestoneToast = scene.add.text(cam.width / 2, cam.height / 2, '', {
       fontFamily: 'Courier New, monospace',
       fontSize: '16px',
       color: '#ffdd44',

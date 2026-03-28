@@ -284,4 +284,53 @@ export class CreatureSimulator {
       default: return base;
     }
   }
+
+  // ── Save/Load ──
+
+  getUniqueSpeciesIds(): Set<string> {
+    return new Set(this.creatures.map(c => c.defId));
+  }
+
+  getSerializableState(): {
+    creatures: Array<{
+      defId: string; col: number; row: number; homeCol: number;
+      facing: number; behavior: CreatureBehavior; activity: CreatureActivity;
+    }>;
+    spawnCounts: Record<string, number>;
+    nextId: number;
+  } {
+    return {
+      creatures: this.creatures.map(c => ({
+        defId: c.defId,
+        col: c.col,
+        row: c.row,
+        homeCol: c.homeCol,
+        facing: c.facing,
+        behavior: c.behavior,
+        activity: c.activity,
+      })),
+      spawnCounts: Object.fromEntries(this.spawnCounts),
+      nextId: this.nextId,
+    };
+  }
+
+  loadState(
+    creatures: Array<{
+      defId: string; col: number; row: number; homeCol: number;
+      facing: number; behavior: CreatureBehavior; activity: CreatureActivity;
+    }>,
+    spawnCounts: Record<string, number>,
+    nextId: number,
+  ): void {
+    this.creatures = creatures.map((c, i) => ({
+      ...c,
+      frameIndex: 0,
+      animTimer: 0,
+      moveTimer: Math.random() * 1000,
+      id: nextId + i,
+    }));
+    this.spawnCounts = new Map(Object.entries(spawnCounts).map(([k, v]) => [k, v]));
+    this.nextId = nextId + creatures.length;
+    this.pendingSpawns = [];
+  }
 }

@@ -35,4 +35,8 @@ export class EnergyManager {
   getEnergy(): number {
     return this.energy;
   }
+
+  setEnergy(value: number): void {
+    this.energy = value;
+  }
 }

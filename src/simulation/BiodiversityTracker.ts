@@ -87,6 +87,22 @@ const MILESTONES: MilestoneDef[] = [
     points: 40,
     check: (s) => s.maturePlants >= 10,
   },
+  {
+    id: 'self_seed_first',
+    title: 'Natural Regeneration',
+    description: 'A plant has self-seeded from your hedge',
+    category: MilestoneCategory.PlantDiversity,
+    points: 20,
+    check: (s) => s.selfSeededPlants >= 1,
+  },
+  {
+    id: 'self_seed_5',
+    title: 'Wild Hedgerow',
+    description: '5 self-seeded plants growing in your hedge',
+    category: MilestoneCategory.PlantDiversity,
+    points: 35,
+    check: (s) => s.selfSeededPlants >= 5,
+  },
 
   // ── Layer Coverage ──────────────────────────────
   {
@@ -140,12 +156,44 @@ const MILESTONES: MilestoneDef[] = [
     check: (s) => s.uniqueCreatureSpecies >= 8,
   },
   {
+    id: 'creature_species_12',
+    title: 'Full Ecosystem',
+    description: '12 different creature species inhabit your hedge',
+    category: MilestoneCategory.CreatureDiversity,
+    points: 80,
+    check: (s) => s.uniqueCreatureSpecies >= 12,
+  },
+  {
+    id: 'creature_species_15',
+    title: 'Nature Reserve',
+    description: '15 different creature species inhabit your hedge',
+    category: MilestoneCategory.CreatureDiversity,
+    points: 100,
+    check: (s) => s.uniqueCreatureSpecies >= 15,
+  },
+  {
     id: 'creatures_10',
     title: 'Bustling Hedge',
     description: '10 creatures living in your hedge at once',
     category: MilestoneCategory.CreatureDiversity,
     points: 30,
     check: (s) => s.totalCreatures >= 10,
+  },
+  {
+    id: 'creatures_20',
+    title: 'Teeming with Life',
+    description: '20 creatures living in your hedge at once',
+    category: MilestoneCategory.CreatureDiversity,
+    points: 50,
+    check: (s) => s.totalCreatures >= 20,
+  },
+  {
+    id: 'apex_predator',
+    title: 'Apex Arrival',
+    description: 'A raptor discovers your hedge — barn owl or red kite',
+    category: MilestoneCategory.CreatureDiversity,
+    points: 60,
+    check: (s) => s.creatureSpeciesIds.has('barnowl') || s.creatureSpeciesIds.has('redkite'),
   },
 
   // ── Ecosystem Health ──────────────────────────────
@@ -172,6 +220,14 @@ const MILESTONES: MilestoneDef[] = [
     category: MilestoneCategory.EcosystemHealth,
     points: 60,
     check: (s) => s.creaturePeriods >= 50,
+  },
+  {
+    id: 'circle_of_life',
+    title: 'Circle of Life',
+    description: 'A plant has died and been replaced by self-seeding',
+    category: MilestoneCategory.EcosystemHealth,
+    points: 30,
+    check: (s) => s.deadPlantCount >= 1 && s.selfSeededPlants >= 1,
   },
 ];
 
@@ -202,6 +258,8 @@ export class BiodiversityTracker {
     totalCreatures: number,
     currentPeriod: number,
     occupiedLayers: number,
+    creatureSpeciesIds: Set<string>,
+    deadPlantCount: number,
   ): MilestoneDef[] {
     // Track creature persistence
     if (totalCreatures > 0) {
@@ -211,18 +269,23 @@ export class BiodiversityTracker {
     }
 
     // Build snapshot
-    const uniquePlantSpecies = new Set(plants.map(p => p.speciesId)).size;
-    const maturePlants = plants.filter(p => p.stage === GrowthStage.Mature).length;
+    const livingPlants = plants.filter(p => !p.isDying);
+    const uniquePlantSpecies = new Set(livingPlants.map(p => p.speciesId)).size;
+    const maturePlants = livingPlants.filter(p => p.stage === GrowthStage.Mature).length;
+    const selfSeededPlants = livingPlants.filter(p => p.selfSeeded).length;
 
     const snapshot: BiodiversitySnapshot = {
-      totalPlants: plants.length,
+      totalPlants: livingPlants.length,
       uniquePlantSpecies,
       maturePlants,
       occupiedLayers,
       totalCreatures,
       uniqueCreatureSpecies,
+      creatureSpeciesIds,
       creaturePeriods: this.creaturePeriods,
       totalPeriods: currentPeriod,
+      deadPlantCount,
+      selfSeededPlants,
     };
 
     // Check unachieved milestones
@@ -277,7 +340,6 @@ export class BiodiversityTracker {
         const done = this.achievedIds.has(def.id);
         const marker = done ? '\u2713' : '\u2022';
         const pts = done ? `+${def.points}` : ` ${def.points}`;
-        const color = done ? '' : ''; // Color handled by renderer
         lines.push(`  ${marker} ${def.title} (${pts})`);
         lines.push(`    ${def.description}`);
       }
@@ -296,5 +358,17 @@ export class BiodiversityTracker {
   /** Get all milestone defs — used by HUD for rendering colors */
   static getAllMilestones(): ReadonlyArray<MilestoneDef> {
     return MILESTONES;
+  }
+
+  // ── Save/Load ──
+
+  getCreaturePeriods(): number {
+    return this.creaturePeriods;
+  }
+
+  loadState(achievedIds: string[], creaturePeriods: number): void {
+    this.achievedIds = new Set(achievedIds);
+    this.achieved = achievedIds.map(id => ({ defId: id, achievedAtPeriod: 0 }));
+    this.creaturePeriods = creaturePeriods;
   }
 }

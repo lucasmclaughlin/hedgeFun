@@ -19,9 +19,18 @@ Completed:
   - Dark transparent backgrounds for contrast
   - Phase 3: Wildlife & Creatures (10 species across all layers, habitat scoring,
     spawning with delay, animated movement, seasonal behavior, creature HUD/tooltips)
-  - Phase 4.1-4.2: Biodiversity scoring (21 milestones across 4 categories,
+  - Phase 4.1-4.2: Biodiversity scoring (28 milestones across 4 categories,
     point system, milestone toast notifications, milestone log overlay [M key],
     compact score in HUD, score integrated into high scores)
+  - Phase 3 expansion: 10 new UK creatures (pipistrelle bat, red kite, red fox,
+    garden snail, common shrew, common lizard, red admiral butterfly, badger,
+    slow worm, barn owl) — 20 total species across all layers including sky
+  - Phase 5.1: Plant death (overcrowding, poor soil, winter/frost stress,
+    health system, fade-to-grey death animation)
+  - Phase 5.2: Self-seeding (mature plants drop seeds in autumn/spring,
+    max 40 plants cap, selfSeeded tracking for milestones)
+  - Phase 7.3: Save/Load (auto-save every 12 periods to localStorage,
+    S/L manual save/load, E/I JSON export/import for prototyping)
 
 ========================================================================
 Ideas:

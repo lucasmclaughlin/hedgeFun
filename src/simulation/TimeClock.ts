@@ -64,4 +64,15 @@ export class TimeClock {
   getTotalPeriods(): number {
     return this.periodIndex;
   }
+
+  // ── Save/Load ──
+
+  getState(): { periodIndex: number; tickAccumulator: number } {
+    return { periodIndex: this.periodIndex, tickAccumulator: this.tickAccumulator };
+  }
+
+  loadState(periodIndex: number, tickAccumulator: number): void {
+    this.periodIndex = periodIndex;
+    this.tickAccumulator = tickAccumulator;
+  }
 }

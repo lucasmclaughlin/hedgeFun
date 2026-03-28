@@ -121,6 +121,14 @@ export interface PlantState {
   stage: GrowthStage;
   ticksInStage: number;
   plantedAt: number;
+  /** Health 0.0-1.0 — drops from overcrowding, poor soil, winter stress */
+  health: number;
+  /** True when health reaches 0 — triggers fade-out then removal */
+  isDying: boolean;
+  /** Periods remaining before a dying plant is removed */
+  deathTimer: number;
+  /** True if this plant grew from a self-seeded drop rather than player planting */
+  selfSeeded: boolean;
 }
 
 // ── Weather system ──────────────────────────────
@@ -282,9 +290,15 @@ export interface BiodiversitySnapshot {
   occupiedLayers: number;
   totalCreatures: number;
   uniqueCreatureSpecies: number;
+  /** Set of creature def IDs currently present */
+  creatureSpeciesIds: Set<string>;
   /** How many periods creatures have been present continuously */
   creaturePeriods: number;
   totalPeriods: number;
+  /** Number of plants that have died total (cumulative) */
+  deadPlantCount: number;
+  /** Number of self-seeded plants currently alive */
+  selfSeededPlants: number;
 }
 
 /** A milestone that has been achieved */
@@ -313,4 +327,33 @@ export interface CreatureState {
   facing: number;
   /** Unique instance id */
   id: number;
+}
+
+// ── Save/Load system ──────────────────────────────
+
+export interface SaveData {
+  version: number;
+  timestamp: number;
+  playerName: string;
+  periodIndex: number;
+  tickAccumulator: number;
+  energy: number;
+  plants: PlantState[];
+  creatures: Array<{
+    defId: string;
+    col: number;
+    row: number;
+    homeCol: number;
+    facing: number;
+    behavior: CreatureBehavior;
+    activity: CreatureActivity;
+  }>;
+  creatureSpawnCounts: Record<string, number>;
+  creatureNextId: number;
+  achievedMilestoneIds: string[];
+  creaturePeriods: number;
+  deadPlantCount: number;
+  currentWeather: Weather;
+  selectedSpeciesIndex: number;
+  viewMode: ViewMode;
 }

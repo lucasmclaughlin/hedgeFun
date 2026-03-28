@@ -8,6 +8,8 @@ const CONTROLS = [
   ['Mouse drag', 'Pan camera'],
   ['M', 'Milestone log (biodiversity score)'],
   ['V', 'Cycle view (Hedge / Underground / Full)'],
+  ['S / L', 'Save / Load game'],
+  ['E / I', 'Export / Import save file'],
   ['R', 'Restart game'],
 ];
 

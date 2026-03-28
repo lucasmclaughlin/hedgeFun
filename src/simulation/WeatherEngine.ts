@@ -215,4 +215,8 @@ export class WeatherEngine {
       }
     }
   }
+
+  setWeather(w: Weather): void {
+    this.current = w;
+  }
 }

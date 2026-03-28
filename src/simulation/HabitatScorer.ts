@@ -49,8 +49,21 @@ export class HabitatScorer {
 
   /** Check if a creature's habitat requirements are met */
   canSupport(def: CreatureDef): boolean {
-    const score = this.layerScores.get(def.layer);
     const req = def.habitat;
+
+    // Sky creatures use overall hedge metrics — plants don't grow in the sky
+    if (def.layer === Layer.Sky) {
+      const totals = this.getTotals();
+      if (totals.plantCount < req.minPlants) return false;
+      if (totals.maturePlantCount < req.minMaturePlants) return false;
+      if (this.totalSpecies.size < req.minSpeciesDiversity) return false;
+      if (req.attractedBySpecies && req.attractedBySpecies.length > 0) {
+        if (!req.attractedBySpecies.some(s => this.totalSpecies.has(s))) return false;
+      }
+      return true;
+    }
+
+    const score = this.layerScores.get(def.layer);
 
     if (!score) {
       // No plants at this layer — still might pass if minPlants is 0
@@ -68,6 +81,17 @@ export class HabitatScorer {
     }
 
     return true;
+  }
+
+  /** Sum plant/mature counts across all layers */
+  private getTotals(): { plantCount: number; maturePlantCount: number } {
+    let plantCount = 0;
+    let maturePlantCount = 0;
+    for (const score of this.layerScores.values()) {
+      plantCount += score.plantCount;
+      maturePlantCount += score.maturePlantCount;
+    }
+    return { plantCount, maturePlantCount };
   }
 
   getLayerScore(layer: Layer): LayerScore | undefined {

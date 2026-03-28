@@ -12,9 +12,13 @@ import { CreatureSimulator } from '@/simulation/CreatureSimulator';
 import { CreatureRenderer } from '@/simulation/CreatureRenderer';
 import { HudRenderer } from '@/ui/HudRenderer';
 import { BiodiversityTracker } from '@/simulation/BiodiversityTracker';
+import { SaveManager } from '@/simulation/SaveManager';
 import { SPECIES_LIST } from '@/data/species';
 import { saveHighScore } from '@/scenes/SplashScene';
-import type { PlantState, CreatureState } from '@/types';
+import type { PlantState, CreatureState, SaveData } from '@/types';
+
+/** Auto-save every 12 periods (1 full year) */
+const AUTO_SAVE_INTERVAL = 12;
 
 /** Deterministic hash for boulder/aquifer placement */
 function hash(x: number, y: number): number {
@@ -44,6 +48,7 @@ export class GameScene extends Phaser.Scene {
   private creatureRenderer!: CreatureRenderer;
   private hudRenderer!: HudRenderer;
   private biodiversityTracker!: BiodiversityTracker;
+  private saveManager!: SaveManager;
   private selectedSpeciesIndex = 0;
 
   // Mouse hover state
@@ -70,11 +75,14 @@ export class GameScene extends Phaser.Scene {
   /** Dedicated HUD camera that ignores zoom */
   private hudCamera!: Phaser.Cameras.Scene2D.Camera;
 
+  /** Track total periods for auto-save timing */
+  private lastSavePeriod = 0;
+
   constructor() {
     super({ key: 'GameScene' });
   }
 
-  init(data: { playerName?: string }): void {
+  init(data: { playerName?: string; loadSave?: SaveData }): void {
     this.playerName = data?.playerName || 'Player';
   }
 
@@ -159,6 +167,7 @@ export class GameScene extends Phaser.Scene {
     this.creatureSim = new CreatureSimulator(this.habitatScorer);
     this.creatureRenderer = new CreatureRenderer(this.asciiRenderer);
     this.biodiversityTracker = new BiodiversityTracker();
+    this.saveManager = new SaveManager();
     this.hudRenderer = new HudRenderer(this);
 
     // Create a separate HUD camera that ignores zoom/scroll
@@ -179,6 +188,12 @@ export class GameScene extends Phaser.Scene {
 
     // Add decorative elements after systems init
     this.addGroundDecoration(soilMap);
+
+    // Check for save data passed via init
+    const initData = this.scene.settings.data as { loadSave?: SaveData } | undefined;
+    if (initData?.loadSave) {
+      this.applySaveData(initData.loadSave);
+    }
 
     // Apply initial view mode (Hedge view by default)
     this.applyViewMode();
@@ -205,7 +220,7 @@ export class GameScene extends Phaser.Scene {
       const period = this.timeClock.getCurrentPeriod();
       const moon = this.timeClock.getMoonPhase();
       this.energyManager.onPeriodAdvance(period, moon);
-      this.growthSim.onPeriodAdvance(period);
+      this.growthSim.onPeriodAdvance(period, this.weatherEngine.getCurrentWeather());
       this.weatherEngine.onPeriodAdvance(period);
       this.plantRenderer.renderPlants(this.growthSim.getPlants(), period.season);
       // Tick creature spawning/habitat check
@@ -219,9 +234,18 @@ export class GameScene extends Phaser.Scene {
         this.creatureSim.getTotalCount(),
         this.timeClock.getTotalPeriods(),
         this.habitatScorer.getOccupiedLayerCount(),
+        this.creatureSim.getUniqueSpeciesIds(),
+        this.growthSim.getDeadPlantCount(),
       );
       if (newMilestones.length > 0) {
         this.hudRenderer.showMilestoneToasts(newMilestones);
+      }
+
+      // Auto-save every year
+      const totalPeriods = this.timeClock.getTotalPeriods();
+      if (totalPeriods > 0 && totalPeriods - this.lastSavePeriod >= AUTO_SAVE_INTERVAL) {
+        this.lastSavePeriod = totalPeriods;
+        this.saveManager.autoSave(this.buildSaveData());
       }
     }
 
@@ -299,6 +323,26 @@ export class GameScene extends Phaser.Scene {
       // Restart game
       case 'r': case 'R':
         this.restartGame();
+        break;
+
+      // Save
+      case 's': case 'S':
+        this.manualSave();
+        break;
+
+      // Load
+      case 'l': case 'L':
+        this.manualLoad();
+        break;
+
+      // Export JSON
+      case 'e': case 'E':
+        this.exportSave();
+        break;
+
+      // Import JSON
+      case 'i': case 'I':
+        this.importSave();
         break;
     }
   }
@@ -391,6 +435,78 @@ export class GameScene extends Phaser.Scene {
         break;
       }
     }
+  }
+
+  // ── Save/Load ──
+
+  private buildSaveData(): Omit<SaveData, 'version' | 'timestamp'> {
+    const clockState = this.timeClock.getState();
+    const creatureState = this.creatureSim.getSerializableState();
+    return {
+      playerName: this.playerName,
+      periodIndex: clockState.periodIndex,
+      tickAccumulator: clockState.tickAccumulator,
+      energy: this.energyManager.getEnergy(),
+      plants: [...this.growthSim.getPlants()],
+      creatures: creatureState.creatures,
+      creatureSpawnCounts: creatureState.spawnCounts,
+      creatureNextId: creatureState.nextId,
+      achievedMilestoneIds: [...this.biodiversityTracker.getAchievedIds()],
+      creaturePeriods: this.biodiversityTracker.getCreaturePeriods(),
+      deadPlantCount: this.growthSim.getDeadPlantCount(),
+      currentWeather: this.weatherEngine.getCurrentWeather(),
+      selectedSpeciesIndex: this.selectedSpeciesIndex,
+      viewMode: this.viewMode,
+    };
+  }
+
+  private applySaveData(save: SaveData): void {
+    this.playerName = save.playerName;
+    this.timeClock.loadState(save.periodIndex, save.tickAccumulator);
+    this.energyManager.setEnergy(save.energy);
+    this.growthSim.loadState(save.plants, save.deadPlantCount);
+    this.creatureSim.loadState(save.creatures, save.creatureSpawnCounts, save.creatureNextId);
+    this.biodiversityTracker.loadState(save.achievedMilestoneIds, save.creaturePeriods);
+    this.weatherEngine.setWeather(save.currentWeather);
+    this.selectedSpeciesIndex = save.selectedSpeciesIndex ?? 0;
+    this.viewMode = save.viewMode ?? ViewMode.Hedge;
+
+    // Re-render plants and environment
+    const period = this.timeClock.getCurrentPeriod();
+    this.plantRenderer.renderPlants(this.growthSim.getPlants(), period.season);
+    this.asciiRenderer.setEnvironment(period.season, this.weatherEngine.getCurrentWeather());
+    this.lastSavePeriod = this.timeClock.getTotalPeriods();
+  }
+
+  private manualSave(): void {
+    this.saveManager.autoSave(this.buildSaveData());
+    this.lastSavePeriod = this.timeClock.getTotalPeriods();
+    this.hudRenderer.showMessage('Game saved');
+  }
+
+  private manualLoad(): void {
+    const save = this.saveManager.loadAutoSave();
+    if (!save) {
+      this.hudRenderer.showMessage('No save found');
+      return;
+    }
+    // Restart scene with save data
+    this.scene.start('GameScene', { playerName: this.playerName, loadSave: save });
+  }
+
+  private exportSave(): void {
+    this.saveManager.downloadSave(this.buildSaveData());
+    this.hudRenderer.showMessage('Save exported');
+  }
+
+  private async importSave(): Promise<void> {
+    const save = await this.saveManager.promptImport();
+    if (!save) {
+      this.hudRenderer.showMessage('Import cancelled or invalid file');
+      return;
+    }
+    // Restart scene with imported save
+    this.scene.start('GameScene', { playerName: save.playerName || this.playerName, loadSave: save });
   }
 
   /** Add ground-level decoration: grass tufts, soil texture, rocks, boulders, aquifers */

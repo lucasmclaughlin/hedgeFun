@@ -19,6 +19,16 @@ Completed:
   - Dark transparent backgrounds for contrast
   - Phase 3: Wildlife & Creatures (10 species across all layers, habitat scoring,
     spawning with delay, animated movement, seasonal behavior, creature HUD/tooltips)
+  - Phase 4.1-4.2: Biodiversity scoring (21 milestones across 4 categories,
+    point system, milestone toast notifications, milestone log overlay [M key],
+    compact score in HUD, score integrated into high scores)
+
+========================================================================
+Ideas:
+
+Other animals: Bats, Owls, Foxes, Centipedes, Caterpillars/butterflies and moths, Snails, Shrews, rats (do they destroy plants?), Badgers
+predators like Red Kites, lizards, 
+========================================================================
 
 ========================================================================
 Phase 3: Wildlife & Creatures

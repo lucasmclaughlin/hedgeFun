@@ -1,7 +1,8 @@
 import Phaser from 'phaser';
-import { Season, GrowthStage, CreatureActivity, type TimePeriod, type MoonPhase, type SpeciesDef, type PlantState, type CreatureState } from '@/types';
+import { Season, GrowthStage, CreatureActivity, type TimePeriod, type MoonPhase, type SpeciesDef, type PlantState, type CreatureState, type MilestoneDef } from '@/types';
 import { SPECIES } from '@/data/species';
 import { CREATURES } from '@/data/creatures';
+import { BiodiversityTracker } from '@/simulation/BiodiversityTracker';
 
 const SEASON_COLORS: Record<Season, string> = {
   [Season.Spring]: '#7aba4a',
@@ -50,10 +51,16 @@ export class HudRenderer {
   private energyText: Phaser.GameObjects.Text;
   private weatherText: Phaser.GameObjects.Text;
   private creatureText: Phaser.GameObjects.Text;
+  private scoreText: Phaser.GameObjects.Text;
   private speciesLines: Phaser.GameObjects.Text[] = [];
   private messageText: Phaser.GameObjects.Text;
+  private milestoneToast: Phaser.GameObjects.Text;
+  private milestoneToastTimer = 0;
+  private milestoneQueue: MilestoneDef[] = [];
   private tooltipText: Phaser.GameObjects.Text;
   private infoPanel: Phaser.GameObjects.Text;
+  private milestoneOverlay: Phaser.GameObjects.Text;
+  private milestoneOverlayVisible = false;
   private messageTimer = 0;
 
   constructor(scene: Phaser.Scene) {
@@ -73,9 +80,16 @@ export class HudRenderer {
       .setScrollFactor(0)
       .setDepth(100);
 
+    this.scoreText = scene.add.text(8, 88, '', {
+      ...HUD_STYLE,
+      color: '#eedd44',
+    })
+      .setScrollFactor(0)
+      .setDepth(100);
+
     // Create individual text objects for each species line (for color coding)
     for (let i = 0; i < 6; i++) {
-      const line = scene.add.text(8, 92 + i * 20, '', {
+      const line = scene.add.text(8, 112 + i * 20, '', {
         ...HUD_STYLE,
         fontSize: '13px',
       })
@@ -84,12 +98,42 @@ export class HudRenderer {
       this.speciesLines.push(line);
     }
 
-    this.messageText = scene.add.text(8, 220, '', {
+    this.messageText = scene.add.text(8, 240, '', {
       ...HUD_STYLE,
       color: '#ffaa44',
     })
       .setScrollFactor(0)
       .setDepth(100)
+      .setAlpha(0);
+
+    // Milestone toast — centered, gold, longer display
+    const cam = scene.cameras.main;
+    this.milestoneToast = scene.add.text(cam.width / 2, cam.height - 60, '', {
+      fontFamily: 'Courier New, monospace',
+      fontSize: '16px',
+      color: '#ffdd44',
+      backgroundColor: '#1a1a2acc',
+      padding: { x: 12, y: 6 },
+      align: 'center',
+    })
+      .setScrollFactor(0)
+      .setDepth(120)
+      .setOrigin(0.5, 0.5)
+      .setAlpha(0);
+
+    // Milestone log overlay — full screen, toggled with M
+    this.milestoneOverlay = scene.add.text(cam.width / 2, cam.height / 2, '', {
+      fontFamily: 'Courier New, monospace',
+      fontSize: '13px',
+      color: '#cccccc',
+      backgroundColor: '#0a0a14ee',
+      padding: { x: 24, y: 16 },
+      lineSpacing: 3,
+      align: 'left',
+    })
+      .setScrollFactor(0)
+      .setDepth(200)
+      .setOrigin(0.5, 0.5)
       .setAlpha(0);
 
     // Tooltip follows mouse
@@ -115,7 +159,6 @@ export class HudRenderer {
       .setDepth(100)
       .setAlpha(0);
 
-    const cam = scene.cameras.main;
     this.infoPanel.setPosition(cam.width - 258, 8);
   }
 
@@ -138,6 +181,9 @@ export class HudRenderer {
     weatherName: string,
     creatureSpeciesCount: number,
     creatureTotalCount: number,
+    biodiversityScore: number,
+    milestonesAchieved: number,
+    milestonesTotal: number,
   ): void {
     const color = SEASON_COLORS[period.season];
     this.seasonText.setText(`${subName} ${seasonName} ${moonSymbol} ${moonName}`);
@@ -158,6 +204,9 @@ export class HudRenderer {
       this.creatureText.setColor('#666666');
       this.creatureText.setAlpha(1);
     }
+
+    // Biodiversity score
+    this.scoreText.setText(`Score: ${biodiversityScore}  (${milestonesAchieved}/${milestonesTotal} milestones) [M]`);
 
     // Species panel — individual colored lines
     for (let i = 0; i < this.speciesLines.length; i++) {
@@ -193,6 +242,20 @@ export class HudRenderer {
         this.messageText.setAlpha(0);
       } else if (this.messageTimer < 500) {
         this.messageText.setAlpha(this.messageTimer / 500);
+      }
+    }
+
+    // Milestone toast (queued, shown one at a time)
+    if (this.milestoneToastTimer > 0) {
+      this.milestoneToastTimer -= delta;
+      if (this.milestoneToastTimer <= 0) {
+        this.milestoneToast.setAlpha(0);
+        // Show next queued milestone if any
+        if (this.milestoneQueue.length > 0) {
+          this.showNextMilestoneToast();
+        }
+      } else if (this.milestoneToastTimer < 600) {
+        this.milestoneToast.setAlpha(this.milestoneToastTimer / 600);
       }
     }
 
@@ -292,6 +355,40 @@ export class HudRenderer {
     this.messageTimer = durationMs;
   }
 
+  /** Queue milestone achievements for display as toasts */
+  showMilestoneToasts(milestones: MilestoneDef[]): void {
+    this.milestoneQueue.push(...milestones);
+    // If nothing currently showing, start the first one
+    if (this.milestoneToastTimer <= 0) {
+      this.showNextMilestoneToast();
+    }
+  }
+
+  private showNextMilestoneToast(): void {
+    const def = this.milestoneQueue.shift();
+    if (!def) return;
+    this.milestoneToast.setText(`\u2605 ${def.title}  +${def.points}\n${def.description}`);
+    this.milestoneToast.setAlpha(1);
+    this.milestoneToastTimer = 3500;
+  }
+
+  /** Toggle the milestone log overlay */
+  toggleMilestoneOverlay(tracker: BiodiversityTracker): void {
+    this.milestoneOverlayVisible = !this.milestoneOverlayVisible;
+    if (this.milestoneOverlayVisible) {
+      const lines = tracker.getMilestoneLog();
+      // Color achieved lines differently by prepending markers
+      this.milestoneOverlay.setText(lines.join('\n'));
+      this.milestoneOverlay.setAlpha(1);
+    } else {
+      this.milestoneOverlay.setAlpha(0);
+    }
+  }
+
+  isMilestoneOverlayVisible(): boolean {
+    return this.milestoneOverlayVisible;
+  }
+
   /** Return all HUD game objects so they can be assigned to a dedicated camera */
   getAllObjects(): Phaser.GameObjects.GameObject[] {
     return [
@@ -299,10 +396,13 @@ export class HudRenderer {
       this.energyText,
       this.weatherText,
       this.creatureText,
+      this.scoreText,
       ...this.speciesLines,
       this.messageText,
+      this.milestoneToast,
       this.tooltipText,
       this.infoPanel,
+      this.milestoneOverlay,
     ];
   }
 }

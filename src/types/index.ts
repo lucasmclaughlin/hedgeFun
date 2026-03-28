@@ -252,6 +252,47 @@ export interface CreatureDef {
   frames: Record<CreatureBehavior, CreatureFrame[]>;
 }
 
+// ── Biodiversity scoring ──────────────────────────────
+
+/** Categories of biodiversity milestones */
+export enum MilestoneCategory {
+  PlantDiversity = 0,
+  LayerCoverage = 1,
+  CreatureDiversity = 2,
+  EcosystemHealth = 3,
+}
+
+/** A milestone definition — pure data */
+export interface MilestoneDef {
+  id: string;
+  title: string;
+  description: string;
+  category: MilestoneCategory;
+  points: number;
+  /** Check function receives current game snapshot and returns true if earned */
+  check: (snapshot: BiodiversitySnapshot) => boolean;
+}
+
+/** Snapshot of game state passed to milestone checks */
+export interface BiodiversitySnapshot {
+  totalPlants: number;
+  uniquePlantSpecies: number;
+  maturePlants: number;
+  /** Number of layers with at least one plant */
+  occupiedLayers: number;
+  totalCreatures: number;
+  uniqueCreatureSpecies: number;
+  /** How many periods creatures have been present continuously */
+  creaturePeriods: number;
+  totalPeriods: number;
+}
+
+/** A milestone that has been achieved */
+export interface AchievedMilestone {
+  defId: string;
+  achievedAtPeriod: number;
+}
+
 /** Runtime state of an active creature instance */
 export interface CreatureState {
   defId: string;

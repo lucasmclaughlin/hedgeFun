@@ -11,6 +11,7 @@ import { HabitatScorer } from '@/simulation/HabitatScorer';
 import { CreatureSimulator } from '@/simulation/CreatureSimulator';
 import { CreatureRenderer } from '@/simulation/CreatureRenderer';
 import { HudRenderer } from '@/ui/HudRenderer';
+import { BiodiversityTracker } from '@/simulation/BiodiversityTracker';
 import { SPECIES_LIST } from '@/data/species';
 import { saveHighScore } from '@/scenes/SplashScene';
 import type { PlantState, CreatureState } from '@/types';
@@ -42,6 +43,7 @@ export class GameScene extends Phaser.Scene {
   private creatureSim!: CreatureSimulator;
   private creatureRenderer!: CreatureRenderer;
   private hudRenderer!: HudRenderer;
+  private biodiversityTracker!: BiodiversityTracker;
   private selectedSpeciesIndex = 0;
 
   // Mouse hover state
@@ -156,6 +158,7 @@ export class GameScene extends Phaser.Scene {
     this.habitatScorer = new HabitatScorer();
     this.creatureSim = new CreatureSimulator(this.habitatScorer);
     this.creatureRenderer = new CreatureRenderer(this.asciiRenderer);
+    this.biodiversityTracker = new BiodiversityTracker();
     this.hudRenderer = new HudRenderer(this);
 
     // Create a separate HUD camera that ignores zoom/scroll
@@ -209,6 +212,17 @@ export class GameScene extends Phaser.Scene {
       this.creatureSim.onPeriodAdvance(period, this.growthSim.getPlants());
       // Update environment tints when season/weather changes
       this.asciiRenderer.setEnvironment(period.season, this.weatherEngine.getCurrentWeather());
+      // Check biodiversity milestones
+      const newMilestones = this.biodiversityTracker.checkMilestones(
+        this.growthSim.getPlants(),
+        this.creatureSim.getUniqueSpeciesCount(),
+        this.creatureSim.getTotalCount(),
+        this.timeClock.getTotalPeriods(),
+        this.habitatScorer.getOccupiedLayerCount(),
+      );
+      if (newMilestones.length > 0) {
+        this.hudRenderer.showMilestoneToasts(newMilestones);
+      }
     }
 
     // Animate weather in sky
@@ -241,6 +255,9 @@ export class GameScene extends Phaser.Scene {
       this.weatherEngine.getWeatherName(),
       this.creatureSim.getUniqueSpeciesCount(),
       this.creatureSim.getTotalCount(),
+      this.biodiversityTracker.getScore(),
+      this.biodiversityTracker.getAchievedCount(),
+      this.biodiversityTracker.getTotalMilestoneCount(),
     );
 
     this.asciiRenderer.update(delta);
@@ -267,6 +284,11 @@ export class GameScene extends Phaser.Scene {
       case ' ':
       case 'Enter':
         this.tryPlant();
+        break;
+
+      // Milestone log
+      case 'm': case 'M':
+        this.hudRenderer.toggleMilestoneOverlay(this.biodiversityTracker);
         break;
 
       // Cycle view mode
@@ -322,6 +344,7 @@ export class GameScene extends Phaser.Scene {
       plants: plants.length,
       creatures: this.creatureSim.getTotalCount(),
       periods: this.timeClock.getTotalPeriods(),
+      score: this.biodiversityTracker.getScore(),
     });
     this.scene.start('SplashScene');
   }

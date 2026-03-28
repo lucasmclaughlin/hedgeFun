@@ -6,6 +6,7 @@ export interface HighScoreEntry {
   plants: number;
   creatures: number;
   periods: number;
+  score: number;
 }
 
 const STORAGE_KEY = 'hedgefun_highscores';
@@ -24,6 +25,9 @@ export function saveHighScore(entry: HighScoreEntry): void {
   const scores = loadHighScores();
   scores.push(entry);
   scores.sort((a, b) => {
+    const aScore = a.score ?? 0;
+    const bScore = b.score ?? 0;
+    if (bScore !== aScore) return bScore - aScore;
     if (b.plants !== a.plants) return b.plants - a.plants;
     if (b.creatures !== a.creatures) return b.creatures - a.creatures;
     return b.periods - a.periods;
@@ -252,7 +256,7 @@ export class SplashScene extends Phaser.Scene {
         const s = scores[i];
         const txt = this.add.text(
           cx, scoreStartY + 22 + i * 18,
-          `${(i + 1)}. ${s.name.padEnd(12)} ${String(s.plants).padStart(3)} plants  ${String(s.creatures).padStart(3)} creatures`,
+          `${(i + 1)}. ${s.name.padEnd(12)} ${String(s.score ?? 0).padStart(4)}pts  ${String(s.plants).padStart(3)} plants  ${String(s.creatures).padStart(3)} creatures`,
           {
             fontFamily: 'Courier New, monospace',
             fontSize: '13px',

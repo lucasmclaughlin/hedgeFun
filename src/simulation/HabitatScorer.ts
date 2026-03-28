@@ -78,6 +78,11 @@ export class HabitatScorer {
     return this.totalSpecies.size;
   }
 
+  /** Count how many distinct layers have at least one plant */
+  getOccupiedLayerCount(): number {
+    return this.layerScores.size;
+  }
+
   /** Determine which layers a plant contributes to based on stage */
   private getContributingLayers(plant: PlantState): Layer[] {
     const species = SPECIES[plant.speciesId];

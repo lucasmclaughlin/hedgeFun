@@ -6,6 +6,7 @@ const CONTROLS = [
   ['Space / Enter', 'Plant selected species'],
   ['Arrow keys', 'Pan camera'],
   ['Mouse drag', 'Pan camera'],
+  ['M', 'Milestone log (biodiversity score)'],
   ['V', 'Cycle view (Hedge / Underground / Full)'],
   ['R', 'Restart game'],
 ];

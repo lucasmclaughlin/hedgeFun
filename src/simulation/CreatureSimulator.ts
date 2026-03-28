@@ -1,5 +1,5 @@
 import {
-  Season, CreatureBehavior, MovementPattern, WinterBehavior, GRID_CONFIG,
+  Season, CreatureBehavior, CreatureActivity, MovementPattern, WinterBehavior, GRID_CONFIG,
   type TimePeriod, type CreatureState, type CreatureDef, type PlantState,
 } from '@/types';
 import { CREATURE_LIST } from '@/data/creatures';
@@ -144,11 +144,13 @@ export class CreatureSimulator {
     // Pick a row within the creature's range
     const row = def.rowRange[0] + Math.floor(Math.random() * (def.rowRange[1] - def.rowRange[0] + 1));
 
+    const idleActs = def.idleActivities;
     const creature: CreatureState = {
       defId,
       col: homeCol,
       row,
       behavior: CreatureBehavior.Idle,
+      activity: idleActs[Math.floor(Math.random() * idleActs.length)],
       frameIndex: 0,
       animTimer: 0,
       moveTimer: Math.random() * 1000, // stagger initial movement
@@ -186,6 +188,7 @@ export class CreatureSimulator {
 
       if (season === Season.Winter && def.winterBehavior === WinterBehavior.Hibernate) {
         creature.behavior = CreatureBehavior.Sleeping;
+        creature.activity = CreatureActivity.Hibernating;
         creature.frameIndex = 0;
       } else if ((season === Season.Autumn || season === Season.Winter) && def.winterBehavior === WinterBehavior.Migrate) {
         // Remove migrating creatures
@@ -195,6 +198,7 @@ export class CreatureSimulator {
       } else if (creature.behavior === CreatureBehavior.Sleeping) {
         // Wake up from hibernation
         creature.behavior = CreatureBehavior.Idle;
+        creature.activity = def.idleActivities[Math.floor(Math.random() * def.idleActivities.length)];
         creature.frameIndex = 0;
       }
     }
@@ -214,6 +218,9 @@ export class CreatureSimulator {
       if (Math.random() < moveChance) {
         creature.behavior = CreatureBehavior.Moving;
         creature.frameIndex = 0;
+        // Pick a moving activity
+        const acts = def.movingActivities;
+        creature.activity = acts[Math.floor(Math.random() * acts.length)];
         // Pick new direction
         if (Math.random() < 0.3) {
           creature.facing *= -1;
@@ -235,6 +242,7 @@ export class CreatureSimulator {
     if (distFromHome > def.homeRange || newCol < 0 || newCol >= GRID_CONFIG.cols) {
       creature.facing *= -1;
       creature.behavior = CreatureBehavior.Idle;
+      creature.activity = def.idleActivities[Math.floor(Math.random() * def.idleActivities.length)];
       creature.frameIndex = 0;
       return;
     }
@@ -260,6 +268,7 @@ export class CreatureSimulator {
 
     if (Math.random() < stopChance) {
       creature.behavior = CreatureBehavior.Idle;
+      creature.activity = def.idleActivities[Math.floor(Math.random() * def.idleActivities.length)];
       creature.frameIndex = 0;
     }
   }

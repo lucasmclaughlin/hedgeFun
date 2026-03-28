@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { Season, GrowthStage, type TimePeriod, type MoonPhase, type SpeciesDef, type PlantState, type CreatureState } from '@/types';
+import { Season, GrowthStage, CreatureActivity, type TimePeriod, type MoonPhase, type SpeciesDef, type PlantState, type CreatureState } from '@/types';
 import { SPECIES } from '@/data/species';
 import { CREATURES } from '@/data/creatures';
 
@@ -8,6 +8,21 @@ const SEASON_COLORS: Record<Season, string> = {
   [Season.Summer]: '#eaea4a',
   [Season.Autumn]: '#da8a2a',
   [Season.Winter]: '#aacaea',
+};
+
+const ACTIVITY_NAMES: Record<CreatureActivity, string> = {
+  [CreatureActivity.Resting]: 'Resting',
+  [CreatureActivity.Foraging]: 'Foraging',
+  [CreatureActivity.Hunting]: 'Hunting',
+  [CreatureActivity.Singing]: 'Singing',
+  [CreatureActivity.Nesting]: 'Nesting',
+  [CreatureActivity.Courting]: 'Courting',
+  [CreatureActivity.Grooming]: 'Grooming',
+  [CreatureActivity.Burrowing]: 'Burrowing',
+  [CreatureActivity.Patrolling]: 'Patrolling',
+  [CreatureActivity.Sleeping]: 'Sleeping',
+  [CreatureActivity.Hibernating]: 'Hibernating',
+  [CreatureActivity.Basking]: 'Basking',
 };
 
 const GROWTH_STAGE_NAMES: Record<GrowthStage, string> = {
@@ -205,19 +220,27 @@ export class HudRenderer {
       const cDef = CREATURES[hoveredCreature.defId];
       if (cDef) {
         const layerNames = ['Sky', 'Upper Canopy', 'Mid Canopy', 'Lower Shrub', 'Ground', 'Underground'];
-        const winterNames = ['Active', 'Hibernates', 'Migrates'];
+        const winterNames = ['Active all year', 'Hibernates in winter', 'Migrates in autumn'];
+        const activityName = ACTIVITY_NAMES[hoveredCreature.activity];
         const infoLines = [
           `-- ${cDef.name} --`,
+          `   ${cDef.latin}`,
           '',
           cDef.description,
+          '',
+          `Activity: ${activityName}`,
+          `Size: ${cDef.size}`,
+          `Diet: ${cDef.diet}`,
+          `Nesting: ${cDef.nesting}`,
           '',
           `Layer: ${layerNames[cDef.layer]}`,
           `Winter: ${winterNames[cDef.winterBehavior]}`,
           `Rarity: ${'*'.repeat(Math.max(1, 6 - Math.ceil(cDef.rarity / 2)))}`,
         ];
         if (cDef.habitat.attractedBySpecies?.length) {
-          infoLines.push('', `Likes: ${cDef.habitat.attractedBySpecies.join(', ')}`);
+          infoLines.push(`Likes: ${cDef.habitat.attractedBySpecies.join(', ')}`);
         }
+        infoLines.push('', cDef.funFact);
         this.infoPanel.setText(infoLines.join('\n'));
         this.infoPanel.setAlpha(1);
       }

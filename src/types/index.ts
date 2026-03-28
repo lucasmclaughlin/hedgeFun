@@ -164,6 +164,22 @@ export enum CreatureBehavior {
   Sleeping = 2,     // hibernation or night rest
 }
 
+/** Descriptive activity — what the creature appears to be doing */
+export enum CreatureActivity {
+  Resting = 0,
+  Foraging = 1,
+  Hunting = 2,
+  Singing = 3,
+  Nesting = 4,
+  Courting = 5,
+  Grooming = 6,
+  Burrowing = 7,
+  Patrolling = 8,
+  Sleeping = 9,
+  Hibernating = 10,
+  Basking = 11,
+}
+
 /** Movement style for creature wandering */
 export enum MovementPattern {
   Wander = 0,       // random short hops within home range
@@ -201,7 +217,21 @@ export interface HabitatRequirement {
 export interface CreatureDef {
   id: string;
   name: string;
+  /** Latin/scientific name */
+  latin: string;
   description: string;
+  /** What this creature eats */
+  diet: string;
+  /** Approximate body size */
+  size: string;
+  /** How/where it nests or shelters */
+  nesting: string;
+  /** A fun or surprising fact */
+  funFact: string;
+  /** Possible activities when idle (weighted by season in simulator) */
+  idleActivities: CreatureActivity[];
+  /** Possible activities when moving */
+  movingActivities: CreatureActivity[];
   /** Layer this creature inhabits */
   layer: Layer;
   /** Row range within its layer where it can appear */
@@ -228,6 +258,8 @@ export interface CreatureState {
   col: number;
   row: number;
   behavior: CreatureBehavior;
+  /** Descriptive activity label */
+  activity: CreatureActivity;
   /** Current animation frame index */
   frameIndex: number;
   /** Time accumulator for animation */

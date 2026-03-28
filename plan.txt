@@ -204,3 +204,108 @@ Priority shortlist:
   6. Phase 3.4 — creature HUD integration
   7. Phase 6 — weather
   8. Phase 7 — remaining polish
+
+========================================================================
+Alternative Game Modes (long-term)
+========================================================================
+
+These modes share the core hedge-building engine but diverge into
+entirely different genres once the hedge is established.
+
+------------------------------------------------------------------------
+Mode A: hedgeKingdoms — Redwall-inspired tower defense / RTS
+------------------------------------------------------------------------
+
+Build your hedge, build an army. The creatures are anthropomorphic — mice
+with swords, hedgehogs in armor, badger generals. Inspired by Brian
+Jacques' Redwall series.
+
+Core concept:
+  - Phase 1 is normal hedgeFun gameplay: plant species, grow the hedge,
+    attract wildlife. This is "peacetime" — establishing your kingdom.
+  - Phase 2 triggers when the hedge is mature enough: predators arrive
+    as invading forces (rats, weasels, stoats, crows, foxes). Waves of
+    enemies approach from the edges of the map.
+  - Creatures you've attracted become defenders. Each species has a role:
+      Mice — archers (ranged, fast, fragile)
+      Hedgehogs — infantry (spiky shield wall, slow, tough)
+      Badgers — heavy units (devastating melee, rare, slow to recruit)
+      Wrens/Robins — scouts (early warning, reveal enemy positions)
+      Owls — night raids (powerful but only active at dusk/night)
+      Shrews — sappers (dig traps, tunnel warfare)
+      Toads — alchemists (poison effects, area denial)
+  - Hedge structure matters for defense:
+      Dense sections slow enemies
+      Thorny species (blackthorn, holly) deal damage to passing enemies
+      Tall canopy provides cover for ranged units
+      Root networks allow underground movement for defenders
+  - Economy: berries and nuts become resources for equipping units
+  - Victory: survive the season of raids; between waves, expand and
+    replant damaged sections
+  - Tone: cozy but stakes feel real. Tiny creatures defending their home.
+    Dramatic ASCII battle scenes. Little swords (†) and shields (o]).
+
+Visual style:
+  - Creatures get equipment glyphs: mouse with bow (}>--), hedgehog
+    with spear ((">), badger with axe ((:P)
+  - Fortifications: tiny walls ([][]), watchtowers (|^|), gates
+  - Battle effects: arrows (-->), sword clashes (*), shield blocks
+
+Possible progression:
+  - Unlock unit upgrades between waves
+  - Named hero characters with persistent levels
+  - Seasonal campaigns: spring raids are small, winter siege is the boss
+
+------------------------------------------------------------------------
+Mode B: hedgeFriends — cozy anthropomorphic village sim
+------------------------------------------------------------------------
+
+No predators, no fighting, no stress. Every creature is a neighbor.
+The hedge becomes a tiny civilization of round doors, winding paths,
+and the smell of baking.
+
+Core concept:
+  - Same hedge-building foundation, but once creatures arrive they
+    become villagers with names, personalities, and daily routines.
+  - No predation — foxes run the bakery, owls keep the library,
+    badgers dig the communting tunnels. Everyone cooperates.
+  - Gameplay loop: build infrastructure for your village
+      Workshops — creatures craft items (wren tailor, beetle carpenter)
+      Kitchens — bake pies, brew tea, make jam from hedge berries
+      Architecture — round doors in tree trunks, rope ladders between
+        branches, skylights in the canopy, cozy underground burrows
+      Gardens — decorative flowers, vegetable patches, herb spirals
+      Social spaces — tea rooms, libraries, market stalls, bandstands
+  - Creatures have needs and preferences:
+      Dormouse wants a cozy reading nook
+      Robin wants a singing stage
+      Hedgehog wants a warm bath house
+      Snail wants a pottery studio
+  - Seasonal events:
+      Spring: planting festival, maypole dance
+      Summer: berry picking, midsummer feast
+      Autumn: harvest fair, conker championships, jam-making
+      Winter: solstice lanterns, fireside storytelling, gift exchange
+  - Nothing bad happens. Weather is atmospheric, not threatening.
+    Winter is cozy blankets and hot cocoa, not hardship.
+
+Visual style:
+  - Tiny ASCII architecture built into the hedge:
+      Round hobbit-doors in trunk bases: (O)
+      Rope bridges between branches: ===~===
+      Skylights in the canopy: [*]
+      Chimney smoke rising: ,,,
+      Lanterns on paths: o
+      Tiny market stalls: [~~]
+      Workshop signs: [T] tailor, [B] bakery, [L] library
+  - Creatures in aprons, hats, scarves — charming domestic glyphs
+  - Interior views when you zoom into a building
+  - Warm color palette, lots of amber and honey tones
+
+Tone:
+  - Wind in the Willows meets Brambly Hedge meets Studio Ghibli
+  - The joy is in the small details: a mouse carrying a tiny pie,
+    a badger reading by candlelight, an owl organizing books
+  - Player goal is making everyone happy and building the most
+    charming hedge village possible
+  - Progression through villager satisfaction, not conflict

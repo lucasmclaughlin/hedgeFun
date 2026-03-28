@@ -59,8 +59,15 @@ export class HudRenderer {
   private milestoneQueue: MilestoneDef[] = [];
   private tooltipText: Phaser.GameObjects.Text;
   private infoPanel: Phaser.GameObjects.Text;
-  private milestoneOverlay: Phaser.GameObjects.Text;
+  private milestoneOverlayBg: Phaser.GameObjects.Graphics;
+  private milestoneOverlayText: Phaser.GameObjects.Text;
   private milestoneOverlayVisible = false;
+  private milestoneScrollY = 0;
+  private milestoneContentHeight = 0;
+  private milestoneViewHeight = 0;
+  private milestoneViewTop = 0;
+  private milestoneScrollBar: Phaser.GameObjects.Graphics;
+  private milestoneHint: Phaser.GameObjects.Text;
   private messageTimer = 0;
 
   constructor(scene: Phaser.Scene) {
@@ -121,20 +128,62 @@ export class HudRenderer {
       .setOrigin(0.5, 0.5)
       .setAlpha(0);
 
-    // Milestone log overlay — full screen, toggled with M
-    this.milestoneOverlay = scene.add.text(cam.width / 2, cam.height / 2, '', {
+    // Milestone log overlay — scrollable window, toggled with M
+    const pad = 32;
+    this.milestoneViewHeight = cam.height - pad * 2;
+    this.milestoneViewTop = pad;
+    const viewLeft = pad;
+    const viewWidth = cam.width - pad * 2;
+
+    this.milestoneOverlayBg = scene.add.graphics()
+      .setScrollFactor(0)
+      .setDepth(199)
+      .setAlpha(0);
+    this.milestoneOverlayBg.fillStyle(0x0a0a14, 0.94);
+    this.milestoneOverlayBg.fillRoundedRect(viewLeft, this.milestoneViewTop, viewWidth, this.milestoneViewHeight, 8);
+
+    this.milestoneOverlayText = scene.add.text(viewLeft + 24, this.milestoneViewTop + 16, '', {
       fontFamily: 'Courier New, monospace',
       fontSize: '13px',
       color: '#cccccc',
-      backgroundColor: '#0a0a14ee',
-      padding: { x: 24, y: 16 },
       lineSpacing: 3,
       align: 'left',
+      wordWrap: { width: viewWidth - 64 },
     })
       .setScrollFactor(0)
-      .setDepth(200)
-      .setOrigin(0.5, 0.5)
+      .setDepth(201)
       .setAlpha(0);
+
+    // Mask to clip text to the overlay area
+    const maskShape = scene.add.graphics().setVisible(false);
+    maskShape.fillRect(viewLeft, this.milestoneViewTop + 8, viewWidth, this.milestoneViewHeight - 16);
+    this.milestoneOverlayText.setMask(new Phaser.Display.Masks.GeometryMask(scene, maskShape));
+
+    // Scroll bar track
+    this.milestoneScrollBar = scene.add.graphics()
+      .setScrollFactor(0)
+      .setDepth(202)
+      .setAlpha(0);
+
+    // Hint text at bottom
+    this.milestoneHint = scene.add.text(cam.width / 2, this.milestoneViewTop + this.milestoneViewHeight - 8, 'Scroll ↑↓  |  M to close', {
+      fontFamily: 'Courier New, monospace',
+      fontSize: '11px',
+      color: '#666688',
+    })
+      .setScrollFactor(0)
+      .setDepth(202)
+      .setOrigin(0.5, 1)
+      .setAlpha(0);
+
+    // Mouse wheel scrolling
+    scene.input.on('wheel', (_pointer: Phaser.Input.Pointer, _gameObjects: Phaser.GameObjects.GameObject[], _deltaX: number, deltaY: number) => {
+      if (!this.milestoneOverlayVisible) return;
+      const maxScroll = Math.max(0, this.milestoneContentHeight - (this.milestoneViewHeight - 48));
+      this.milestoneScrollY = Phaser.Math.Clamp(this.milestoneScrollY + deltaY * 0.5, 0, maxScroll);
+      this.milestoneOverlayText.setY(this.milestoneViewTop + 16 - this.milestoneScrollY);
+      this.updateMilestoneScrollBar();
+    });
 
     // Tooltip follows mouse
     this.tooltipText = scene.add.text(0, 0, '', {
@@ -377,12 +426,40 @@ export class HudRenderer {
     this.milestoneOverlayVisible = !this.milestoneOverlayVisible;
     if (this.milestoneOverlayVisible) {
       const lines = tracker.getMilestoneLog();
-      // Color achieved lines differently by prepending markers
-      this.milestoneOverlay.setText(lines.join('\n'));
-      this.milestoneOverlay.setAlpha(1);
+      this.milestoneOverlayText.setText(lines.join('\n'));
+      this.milestoneScrollY = 0;
+      this.milestoneOverlayText.setY(this.milestoneViewTop + 16);
+      this.milestoneContentHeight = this.milestoneOverlayText.height;
+      this.milestoneOverlayBg.setAlpha(1);
+      this.milestoneOverlayText.setAlpha(1);
+      this.milestoneHint.setAlpha(1);
+      this.updateMilestoneScrollBar();
+      this.milestoneScrollBar.setAlpha(1);
     } else {
-      this.milestoneOverlay.setAlpha(0);
+      this.milestoneOverlayBg.setAlpha(0);
+      this.milestoneOverlayText.setAlpha(0);
+      this.milestoneScrollBar.setAlpha(0);
+      this.milestoneHint.setAlpha(0);
     }
+  }
+
+  private updateMilestoneScrollBar(): void {
+    this.milestoneScrollBar.clear();
+    const maxScroll = Math.max(1, this.milestoneContentHeight - (this.milestoneViewHeight - 48));
+    if (this.milestoneContentHeight <= this.milestoneViewHeight - 48) return; // no scrollbar needed
+    const cam = this.milestoneOverlayBg.scene.cameras.main;
+    const trackX = cam.width - 40;
+    const trackTop = this.milestoneViewTop + 12;
+    const trackHeight = this.milestoneViewHeight - 40;
+    const thumbRatio = Math.min(1, (this.milestoneViewHeight - 48) / this.milestoneContentHeight);
+    const thumbHeight = Math.max(20, trackHeight * thumbRatio);
+    const thumbY = trackTop + (this.milestoneScrollY / maxScroll) * (trackHeight - thumbHeight);
+    // Track
+    this.milestoneScrollBar.fillStyle(0x333355, 0.5);
+    this.milestoneScrollBar.fillRoundedRect(trackX, trackTop, 6, trackHeight, 3);
+    // Thumb
+    this.milestoneScrollBar.fillStyle(0x8888bb, 0.8);
+    this.milestoneScrollBar.fillRoundedRect(trackX, thumbY, 6, thumbHeight, 3);
   }
 
   isMilestoneOverlayVisible(): boolean {
@@ -402,7 +479,10 @@ export class HudRenderer {
       this.milestoneToast,
       this.tooltipText,
       this.infoPanel,
-      this.milestoneOverlay,
+      this.milestoneOverlayBg,
+      this.milestoneOverlayText,
+      this.milestoneScrollBar,
+      this.milestoneHint,
     ];
   }
 }

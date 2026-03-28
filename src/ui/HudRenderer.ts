@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
-import { Season, GrowthStage, type TimePeriod, type MoonPhase, type SpeciesDef, type PlantState } from '@/types';
+import { Season, GrowthStage, type TimePeriod, type MoonPhase, type SpeciesDef, type PlantState, type CreatureState } from '@/types';
 import { SPECIES } from '@/data/species';
+import { CREATURES } from '@/data/creatures';
 
 const SEASON_COLORS: Record<Season, string> = {
   [Season.Spring]: '#7aba4a',
@@ -33,6 +34,7 @@ export class HudRenderer {
   private seasonText: Phaser.GameObjects.Text;
   private energyText: Phaser.GameObjects.Text;
   private weatherText: Phaser.GameObjects.Text;
+  private creatureText: Phaser.GameObjects.Text;
   private speciesLines: Phaser.GameObjects.Text[] = [];
   private messageText: Phaser.GameObjects.Text;
   private tooltipText: Phaser.GameObjects.Text;
@@ -52,9 +54,13 @@ export class HudRenderer {
       .setScrollFactor(0)
       .setDepth(100);
 
+    this.creatureText = scene.add.text(8, 68, '', HUD_STYLE)
+      .setScrollFactor(0)
+      .setDepth(100);
+
     // Create individual text objects for each species line (for color coding)
     for (let i = 0; i < 6; i++) {
-      const line = scene.add.text(8, 72 + i * 20, '', {
+      const line = scene.add.text(8, 92 + i * 20, '', {
         ...HUD_STYLE,
         fontSize: '13px',
       })
@@ -63,7 +69,7 @@ export class HudRenderer {
       this.speciesLines.push(line);
     }
 
-    this.messageText = scene.add.text(8, 200, '', {
+    this.messageText = scene.add.text(8, 220, '', {
       ...HUD_STYLE,
       color: '#ffaa44',
     })
@@ -111,9 +117,12 @@ export class HudRenderer {
     delta: number,
     allSpecies: SpeciesDef[],
     hoveredPlant: PlantState | null,
+    hoveredCreature: CreatureState | null,
     mouseScreenX: number,
     mouseScreenY: number,
     weatherName: string,
+    creatureSpeciesCount: number,
+    creatureTotalCount: number,
   ): void {
     const color = SEASON_COLORS[period.season];
     this.seasonText.setText(`${subName} ${seasonName} ${moonSymbol} ${moonName}`);
@@ -123,6 +132,17 @@ export class HudRenderer {
     this.energyText.setText(`Energy: ${bar} ${energy}`);
 
     this.weatherText.setText(`Weather: ${weatherName}`);
+
+    // Creature census
+    if (creatureTotalCount > 0) {
+      this.creatureText.setText(`Creatures: ${creatureSpeciesCount} species, ${creatureTotalCount} total`);
+      this.creatureText.setColor('#aaddaa');
+      this.creatureText.setAlpha(1);
+    } else {
+      this.creatureText.setText('Creatures: none yet');
+      this.creatureText.setColor('#666666');
+      this.creatureText.setAlpha(1);
+    }
 
     // Species panel — individual colored lines
     for (let i = 0; i < this.speciesLines.length; i++) {
@@ -162,7 +182,14 @@ export class HudRenderer {
     }
 
     // Tooltip
-    if (hoveredPlant) {
+    if (hoveredCreature) {
+      const cDef = CREATURES[hoveredCreature.defId];
+      if (cDef) {
+        this.tooltipText.setText(cDef.name);
+        this.tooltipText.setPosition(mouseScreenX + 16, mouseScreenY - 8);
+        this.tooltipText.setAlpha(1);
+      }
+    } else if (hoveredPlant) {
       const species = SPECIES[hoveredPlant.speciesId];
       if (species) {
         this.tooltipText.setText(species.name);
@@ -174,7 +201,27 @@ export class HudRenderer {
     }
 
     // Info panel
-    if (hoveredPlant) {
+    if (hoveredCreature) {
+      const cDef = CREATURES[hoveredCreature.defId];
+      if (cDef) {
+        const layerNames = ['Sky', 'Upper Canopy', 'Mid Canopy', 'Lower Shrub', 'Ground', 'Underground'];
+        const winterNames = ['Active', 'Hibernates', 'Migrates'];
+        const infoLines = [
+          `-- ${cDef.name} --`,
+          '',
+          cDef.description,
+          '',
+          `Layer: ${layerNames[cDef.layer]}`,
+          `Winter: ${winterNames[cDef.winterBehavior]}`,
+          `Rarity: ${'*'.repeat(Math.max(1, 6 - Math.ceil(cDef.rarity / 2)))}`,
+        ];
+        if (cDef.habitat.attractedBySpecies?.length) {
+          infoLines.push('', `Likes: ${cDef.habitat.attractedBySpecies.join(', ')}`);
+        }
+        this.infoPanel.setText(infoLines.join('\n'));
+        this.infoPanel.setAlpha(1);
+      }
+    } else if (hoveredPlant) {
       const species = SPECIES[hoveredPlant.speciesId];
       if (species) {
         const stage = GROWTH_STAGE_NAMES[hoveredPlant.stage];

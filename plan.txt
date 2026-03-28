@@ -2,9 +2,9 @@ hedgeFun — Development Plan
 ============================
 
 Completed:
-  - ASCII grid rendering (200x50, canvas)
+  - ASCII grid rendering (200x55, canvas)
   - 6 native UK hedge species with 4-stage growth visuals (seed/seedling/juvenile/mature)
-  - Root systems visible underground
+  - Root systems visible underground with white glow effect
   - Energy system (seasonal gain + moon bonus, spend to plant)
   - 12-period year (4 seasons x 3 subs), moon phases
   - Soil system (topsoil/subsoil/bedrock) with procedural fertility/rock density
@@ -12,7 +12,13 @@ Completed:
   - HUD: species panel, energy bar, season/moon display, hover tooltips, info panel
   - Cursor locked to ground row, A/D movement, 1-6 species select, space/enter to plant
   - Camera panning (arrow keys + mouse drag)
-  - Ground/sky/underground decoration
+  - Ground/sky/underground decoration with large boulders and water aquifers
+  - Seasonal plant visuals (flowers in spring, fruit in autumn, bare in winter)
+  - Animated color modulation (season tints, weather tints, organic pulse)
+  - Weather system with visual sky overlays (rain, storm, frost, wind, clouds, stars)
+  - Dark transparent backgrounds for contrast
+  - Phase 3: Wildlife & Creatures (10 species across all layers, habitat scoring,
+    spawning with delay, animated movement, seasonal behavior, creature HUD/tooltips)
 
 ========================================================================
 Phase 3: Wildlife & Creatures

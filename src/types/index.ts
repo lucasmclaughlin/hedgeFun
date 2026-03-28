@@ -147,3 +147,89 @@ export interface SoilCell {
   rockDensity: number;   // 0-1
   fertility: number;     // 0-1
 }
+
+// ── Creature system ──────────────────────────────
+
+export enum CreatureBehavior {
+  Idle = 0,
+  Moving = 1,
+  Sleeping = 2,     // hibernation or night rest
+}
+
+/** Movement style for creature wandering */
+export enum MovementPattern {
+  Wander = 0,       // random short hops within home range
+  Burrow = 1,       // stays mostly still, occasional short move
+  Hop = 2,          // short pauses then quick move
+  Flit = 3,         // fast erratic movement
+  Soar = 4,         // slow, wide sweeping movement
+}
+
+/** What the creature does in winter */
+export enum WinterBehavior {
+  Active = 0,       // stays active year-round
+  Hibernate = 1,    // disappears in winter
+  Migrate = 2,      // leaves in autumn, returns in spring
+}
+
+/** Animation frame: a set of glyphs relative to an anchor */
+export interface CreatureFrame {
+  cells: Array<[number, number, Glyph]>;  // [colOff, rowOff, glyph]
+}
+
+/** Habitat requirements for a creature to spawn */
+export interface HabitatRequirement {
+  /** Minimum number of plants at the creature's layer */
+  minPlants: number;
+  /** Minimum number of mature plants at the creature's layer */
+  minMaturePlants: number;
+  /** Minimum distinct species count in the hedge */
+  minSpeciesDiversity: number;
+  /** Specific species that must be present (any one of these) */
+  attractedBySpecies?: string[];
+}
+
+/** Creature species definition — pure data */
+export interface CreatureDef {
+  id: string;
+  name: string;
+  description: string;
+  /** Layer this creature inhabits */
+  layer: Layer;
+  /** Row range within its layer where it can appear */
+  rowRange: [number, number];
+  /** Movement style */
+  movement: MovementPattern;
+  /** How many columns the creature wanders from home */
+  homeRange: number;
+  /** Speed: columns per second */
+  speed: number;
+  /** Rarity weight (lower = rarer, 1-10 scale) */
+  rarity: number;
+  /** Winter behavior */
+  winterBehavior: WinterBehavior;
+  /** Habitat requirements to spawn */
+  habitat: HabitatRequirement;
+  /** Animation frames keyed by behavior */
+  frames: Record<CreatureBehavior, CreatureFrame[]>;
+}
+
+/** Runtime state of an active creature instance */
+export interface CreatureState {
+  defId: string;
+  col: number;
+  row: number;
+  behavior: CreatureBehavior;
+  /** Current animation frame index */
+  frameIndex: number;
+  /** Time accumulator for animation */
+  animTimer: number;
+  /** Time accumulator for movement decisions */
+  moveTimer: number;
+  /** Column of the plant this creature calls home */
+  homeCol: number;
+  /** Direction creature is facing (1 = right, -1 = left) */
+  facing: number;
+  /** Unique instance id */
+  id: number;
+}

@@ -7,9 +7,12 @@ import { GrowthSimulator } from '@/simulation/GrowthSimulator';
 import { SoilMap } from '@/simulation/SoilMap';
 import { PlantRenderer } from '@/simulation/PlantRenderer';
 import { WeatherEngine } from '@/simulation/WeatherEngine';
+import { HabitatScorer } from '@/simulation/HabitatScorer';
+import { CreatureSimulator } from '@/simulation/CreatureSimulator';
+import { CreatureRenderer } from '@/simulation/CreatureRenderer';
 import { HudRenderer } from '@/ui/HudRenderer';
 import { SPECIES_LIST } from '@/data/species';
-import type { PlantState } from '@/types';
+import type { PlantState, CreatureState } from '@/types';
 
 /** Deterministic hash for boulder/aquifer placement */
 function hash(x: number, y: number): number {
@@ -34,11 +37,15 @@ export class GameScene extends Phaser.Scene {
   private growthSim!: GrowthSimulator;
   private plantRenderer!: PlantRenderer;
   private weatherEngine!: WeatherEngine;
+  private habitatScorer!: HabitatScorer;
+  private creatureSim!: CreatureSimulator;
+  private creatureRenderer!: CreatureRenderer;
   private hudRenderer!: HudRenderer;
   private selectedSpeciesIndex = 0;
 
   // Mouse hover state
   private hoveredPlant: PlantState | null = null;
+  private hoveredCreature: CreatureState | null = null;
   private mouseScreenX = 0;
   private mouseScreenY = 0;
 
@@ -98,9 +105,11 @@ export class GameScene extends Phaser.Scene {
       const col = Math.floor(pointer.worldX / GRID_CONFIG.cellWidth);
       const row = Math.floor(pointer.worldY / GRID_CONFIG.cellHeight);
       if (col >= 0 && col < GRID_CONFIG.cols && row >= 0 && row < GRID_CONFIG.rows) {
-        this.hoveredPlant = this.growthSim.getPlantAtCell(col, row);
+        this.hoveredCreature = this.creatureSim.getCreatureAtCell(col, row);
+        this.hoveredPlant = this.hoveredCreature ? null : this.growthSim.getPlantAtCell(col, row);
       } else {
         this.hoveredPlant = null;
+        this.hoveredCreature = null;
       }
 
       if (!this.isDragging) return;
@@ -134,6 +143,9 @@ export class GameScene extends Phaser.Scene {
     this.growthSim = new GrowthSimulator(soilMap);
     this.plantRenderer = new PlantRenderer(this.asciiRenderer);
     this.weatherEngine = new WeatherEngine(this.asciiRenderer);
+    this.habitatScorer = new HabitatScorer();
+    this.creatureSim = new CreatureSimulator(this.habitatScorer);
+    this.creatureRenderer = new CreatureRenderer(this.asciiRenderer);
     this.hudRenderer = new HudRenderer(this);
 
     // Set initial environment
@@ -168,12 +180,18 @@ export class GameScene extends Phaser.Scene {
       this.growthSim.onPeriodAdvance(period);
       this.weatherEngine.onPeriodAdvance(period);
       this.plantRenderer.renderPlants(this.growthSim.getPlants(), period.season);
+      // Tick creature spawning/habitat check
+      this.creatureSim.onPeriodAdvance(period, this.growthSim.getPlants());
       // Update environment tints when season/weather changes
       this.asciiRenderer.setEnvironment(period.season, this.weatherEngine.getCurrentWeather());
     }
 
     // Animate weather in sky
     this.weatherEngine.updateSkyOverlays(delta);
+
+    // Animate creatures (movement + animation frames)
+    this.creatureSim.updateCreatures(delta);
+    this.creatureRenderer.renderCreatures(this.creatureSim.getCreatures());
 
     // Update HUD
     const period = this.timeClock.getCurrentPeriod();
@@ -192,9 +210,12 @@ export class GameScene extends Phaser.Scene {
       delta,
       SPECIES_LIST,
       this.hoveredPlant,
+      this.hoveredCreature,
       this.mouseScreenX,
       this.mouseScreenY,
       this.weatherEngine.getWeatherName(),
+      this.creatureSim.getUniqueSpeciesCount(),
+      this.creatureSim.getTotalCount(),
     );
 
     this.asciiRenderer.update(delta);

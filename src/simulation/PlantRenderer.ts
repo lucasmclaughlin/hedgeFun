@@ -1,4 +1,4 @@
-import { GRID_CONFIG, type PlantState, type Season, type Glyph } from '@/types';
+import { GRID_CONFIG, OverlayLayer, type PlantState, type Season, type Glyph } from '@/types';
 import { SPECIES } from '@/data/species';
 import { AsciiRenderer } from '@/rendering/AsciiRenderer';
 
@@ -53,7 +53,7 @@ export class PlantRenderer {
     // Clear previous plant overlays
     for (const key of this.plantCells) {
       const [col, row] = key.split(',').map(Number);
-      this.renderer.clearOverlay(col, row);
+      this.renderer.clearOverlay(col, row, OverlayLayer.Plant);
     }
     this.plantCells.clear();
 
@@ -80,7 +80,7 @@ export class PlantRenderer {
         if (plant.isDying) {
           finalGlyph = withDeathFade(finalGlyph, fadeProgress);
         }
-        this.renderer.setOverlay(absCol, absRow, finalGlyph);
+        this.renderer.setOverlay(absCol, absRow, finalGlyph, OverlayLayer.Plant);
         this.plantCells.add(key);
       }
 
@@ -97,7 +97,7 @@ export class PlantRenderer {
             if (absRow < 0 || absRow >= GRID_CONFIG.rows) continue;
 
             const key = `${absCol},${absRow}`;
-            this.renderer.setOverlay(absCol, absRow, withRootColor(colOff, rowOff, glyph));
+            this.renderer.setOverlay(absCol, absRow, withRootColor(colOff, rowOff, glyph), OverlayLayer.Plant);
             this.plantCells.add(key);
           }
         }

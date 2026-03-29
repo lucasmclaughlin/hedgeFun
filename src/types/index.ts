@@ -5,6 +5,14 @@ export interface Glyph {
   bg?: string;
 }
 
+/** Overlay draw-order layers — higher values draw on top */
+export enum OverlayLayer {
+  Terrain = 0,
+  Plant = 10,
+  Creature = 20,
+  Weather = 30,
+}
+
 /** Vertical layer zones in the hedgerow world */
 export enum Layer {
   Sky = 0,

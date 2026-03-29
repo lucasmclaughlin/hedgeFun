@@ -1,4 +1,4 @@
-import { Season, Weather, GRID_CONFIG, LAYER_CONFIGS, type TimePeriod, type Glyph } from '@/types';
+import { Season, Weather, GRID_CONFIG, LAYER_CONFIGS, OverlayLayer, type TimePeriod, type Glyph } from '@/types';
 import { AsciiRenderer } from '@/rendering/AsciiRenderer';
 
 /** Season-weighted weather probabilities: [Clear, Overcast, Rain, Storm, Wind, Frost] */
@@ -109,7 +109,7 @@ export class WeatherEngine {
     // Clear previous overlays
     for (const key of this.skyOverlayKeys) {
       const [c, r] = key.split(',').map(Number);
-      this.renderer.clearOverlay(c, r);
+      this.renderer.clearOverlay(c, r, OverlayLayer.Weather);
     }
     this.skyOverlayKeys = [];
 
@@ -141,7 +141,7 @@ export class WeatherEngine {
   private setOverlay(col: number, row: number, glyph: Glyph): void {
     const key = `${col},${row}`;
     this.skyOverlayKeys.push(key);
-    this.renderer.setOverlay(col, row, glyph);
+    this.renderer.setOverlay(col, row, glyph, OverlayLayer.Weather);
   }
 
   private renderClearSky(cols: number): void {

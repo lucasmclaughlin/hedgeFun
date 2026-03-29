@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { Glyph, GRID_CONFIG, Season, Weather } from '@/types';
+import { Glyph, GRID_CONFIG, OverlayLayer, Season, Weather } from '@/types';
 import { getBackgroundGlyph, getBackgroundColor } from './GlyphAtlas';
 
 /** Season color tints [R, G, B] offsets */
@@ -39,8 +39,8 @@ export class AsciiRenderer {
   private image: Phaser.GameObjects.Image;
   private texture: Phaser.Textures.CanvasTexture;
 
-  /** Overlay grid: sparse map of "col,row" -> Glyph for entities on top of background */
-  private overlays: Map<string, Glyph> = new Map();
+  /** Layered overlay grid: "col,row" -> map of layer -> Glyph (highest layer draws on top) */
+  private overlays: Map<string, Map<number, Glyph>> = new Map();
 
   /** Cursor position */
   private cursorCol = 0;
@@ -83,14 +83,26 @@ export class AsciiRenderer {
     this.glowBlur = SEASON_GLOW[season];
   }
 
-  /** Set an overlay glyph at a position (for entities, plants, etc.) */
-  setOverlay(col: number, row: number, glyph: Glyph): void {
-    this.overlays.set(`${col},${row}`, glyph);
+  /** Set an overlay glyph at a position on a specific layer */
+  setOverlay(col: number, row: number, glyph: Glyph, layer: OverlayLayer = OverlayLayer.Terrain): void {
+    const key = `${col},${row}`;
+    let layers = this.overlays.get(key);
+    if (!layers) {
+      layers = new Map();
+      this.overlays.set(key, layers);
+    }
+    layers.set(layer, glyph);
   }
 
-  /** Remove an overlay glyph */
-  clearOverlay(col: number, row: number): void {
-    this.overlays.delete(`${col},${row}`);
+  /** Remove an overlay glyph from a specific layer */
+  clearOverlay(col: number, row: number, layer: OverlayLayer = OverlayLayer.Terrain): void {
+    const key = `${col},${row}`;
+    const layers = this.overlays.get(key);
+    if (!layers) return;
+    layers.delete(layer);
+    if (layers.size === 0) {
+      this.overlays.delete(key);
+    }
   }
 
   /** Move the selection cursor */
@@ -150,8 +162,15 @@ export class AsciiRenderer {
         const x = col * cellWidth;
         const y = row * cellHeight;
 
-        // Check for overlay first
-        const overlay = this.overlays.get(`${col},${row}`);
+        // Check for overlay — pick highest layer
+        const layers = this.overlays.get(`${col},${row}`);
+        let overlay: Glyph | undefined;
+        if (layers) {
+          let maxLayer = -1;
+          for (const [l, g] of layers) {
+            if (l > maxLayer) { maxLayer = l; overlay = g; }
+          }
+        }
         const glyph = overlay ?? getBackgroundGlyph(col, row);
 
         // Draw background — apply subtle tint to overlay backgrounds

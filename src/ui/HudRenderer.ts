@@ -41,8 +41,7 @@ export class HudRenderer {
   }
 
   private getCurrentSeason(): string {
-    // Implement logic to determine the current season based on periodIndex
     const seasons = ['Spring', 'Summer', 'Autumn', 'Winter'];
-    return seasons[Math.floor(this.timeClock.periodIndex % 12 / 3)];
+    return seasons[Math.floor(this.timeClock.getPeriodIndex() % 12 / 3)];
   }
 }

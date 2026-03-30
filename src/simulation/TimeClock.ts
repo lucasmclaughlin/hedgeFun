@@ -2,6 +2,10 @@ export class TimeClock {
   private periodIndex = 0;
   private tickAccumulator = 0;
 
+  public getPeriodIndex(): number {
+    return this.periodIndex;
+  }
+
   /** Real-time milliseconds per period. Default ~8s = full year in ~96s. */
   private readonly tickDurationMs: number;
 
@@ -10,7 +14,7 @@ export class TimeClock {
   }
 
   public getYear(): number {
-    return Math.floor(this.periodIndex / 12) + 1;
+    return Math.floor(this.periodIndex / 12);
   }
 
   // Other methods...

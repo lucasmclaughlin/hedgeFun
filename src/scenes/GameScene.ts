@@ -17,7 +17,6 @@ export class GameScene extends Phaser.Scene {
   init(data: { playerName?: string; loadSave?: SaveData }): void {
     this.playerName = data?.playerName || 'Player';
     this.timeClock = new TimeClock();
-    this.hudRenderer = new HudRenderer(this.timeClock);
   }
 
   create(): void {
@@ -32,15 +31,7 @@ export class GameScene extends Phaser.Scene {
 
     // Initialize other game elements...
 
-    // Add the HUD to the scene
-    this.add.existing(this.hudRenderer.seasonText);
-    this.add.existing(this.hudRenderer.energyText);
-    this.add.existing(this.hudRenderer.weatherText);
-    this.add.existing(this.hudRenderer.creatureText);
-    this.add.existing(this.hudRenderer.scoreText);
-    this.speciesLines.forEach(line => this.add.existing(line));
-    this.add.existing(this.hudRenderer.messageText);
-    this.add.existing(this.hudRenderer.milestoneToast);
+    this.hudRenderer = new HudRenderer(this.timeClock, this);
 
     // Update the HUD every frame
     this.time.addEvent({

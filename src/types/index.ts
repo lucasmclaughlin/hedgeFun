@@ -137,6 +137,8 @@ export interface PlantState {
   deathTimer: number;
   /** True if this plant grew from a self-seeded drop rather than player planting */
   selfSeeded: boolean;
+  /** True if this plant has been hedge-laid — persists through regrowth, improves density and longevity */
+  isLaid: boolean;
 }
 
 // ── Weather system ──────────────────────────────
@@ -307,6 +309,12 @@ export interface BiodiversitySnapshot {
   deadPlantCount: number;
   /** Number of self-seeded plants currently alive */
   selfSeededPlants: number;
+  /** Total number of prune actions performed */
+  pruneCount: number;
+  /** Total number of hedge-laying actions performed */
+  laidCount: number;
+  /** Number of currently living plants that have been laid and since grown to Mature */
+  laidMaturePlants: number;
 }
 
 /** A milestone that has been achieved */
@@ -361,6 +369,8 @@ export interface SaveData {
   achievedMilestoneIds: string[];
   creaturePeriods: number;
   deadPlantCount: number;
+  pruneCount: number;
+  laidCount: number;
   currentWeather: Weather;
   selectedSpeciesIndex: number;
   viewMode: ViewMode;

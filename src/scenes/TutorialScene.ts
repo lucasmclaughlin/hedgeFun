@@ -4,6 +4,8 @@ const CONTROLS = [
   ['A / D', 'Move cursor left / right'],
   ['1-6', 'Select plant species'],
   ['Space / Enter', 'Plant selected species'],
+  ['P', 'Prune plant at cursor'],
+  ['H', 'Lay hedge (Winter only, Mature plants)'],
   ['Arrow keys', 'Pan camera'],
   ['Mouse drag', 'Pan camera'],
   ['M', 'Milestone log (biodiversity score)'],

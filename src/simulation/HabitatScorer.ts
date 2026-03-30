@@ -21,6 +21,7 @@ export class HabitatScorer {
   evaluate(plants: ReadonlyArray<PlantState>): void {
     this.layerScores.clear();
     this.totalSpecies.clear();
+    this._laidPlantCount = plants.filter(p => (p.isLaid ?? false) && !p.isDying).length;
 
     for (const plant of plants) {
       const species = SPECIES[plant.speciesId];
@@ -65,12 +66,18 @@ export class HabitatScorer {
 
     const score = this.layerScores.get(def.layer);
 
+    // Laid plants create dense ground structure that reduces habitat thresholds for
+    // ground-dwelling and underground creatures
+    const laidBonus = (def.layer === Layer.Ground || def.layer === Layer.Underground)
+      ? this._laidPlantCount
+      : 0;
+
     if (!score) {
-      // No plants at this layer — still might pass if minPlants is 0
-      return req.minPlants <= 0 && req.minMaturePlants <= 0 && req.minSpeciesDiversity <= this.totalSpecies.size;
+      // No plants at this layer — still might pass if minPlants is met by laid bonus
+      return (req.minPlants <= laidBonus) && req.minMaturePlants <= 0 && req.minSpeciesDiversity <= this.totalSpecies.size;
     }
 
-    if (score.plantCount < req.minPlants) return false;
+    if (score.plantCount + laidBonus < req.minPlants) return false;
     if (score.maturePlantCount < req.minMaturePlants) return false;
     if (this.totalSpecies.size < req.minSpeciesDiversity) return false;
 
@@ -107,21 +114,32 @@ export class HabitatScorer {
     return this.layerScores.size;
   }
 
+  /** Count of laid plants — used for ground-creature habitat bonuses */
+  getLaidPlantCount(): number {
+    return this._laidPlantCount;
+  }
+
+  private _laidPlantCount = 0;
+
   /** Determine which layers a plant contributes to based on stage */
   private getContributingLayers(plant: PlantState): Layer[] {
     const species = SPECIES[plant.speciesId];
     if (!species) return [];
 
+    const isLaid = plant.isLaid ?? false;
+
     // All plants contribute to ground layer at minimum
     const layers = new Set<Layer>([Layer.Ground]);
 
-    // Juvenile+ contribute to lower shrub
-    if (plant.stage >= GrowthStage.Juvenile) {
+    // Laid plants (even as seedlings) already have dense base structure —
+    // they count for LowerShrub from the moment they're laid
+    if (plant.stage >= GrowthStage.Juvenile || isLaid) {
       layers.add(Layer.LowerShrub);
     }
 
-    // Mature plants contribute to their defined matureLayers
-    if (plant.stage === GrowthStage.Mature) {
+    // Laid juveniles have vigorous multi-stem regrowth — count all mature layers
+    // so creatures return to the hedge quickly after a laying
+    if (plant.stage === GrowthStage.Mature || (isLaid && plant.stage >= GrowthStage.Juvenile)) {
       for (const l of species.matureLayers) {
         layers.add(l);
       }

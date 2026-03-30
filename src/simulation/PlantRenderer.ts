@@ -1,6 +1,42 @@
-import { GRID_CONFIG, OverlayLayer, type PlantState, type Season, type Glyph } from '@/types';
+import { GRID_CONFIG, GrowthStage, OverlayLayer, type PlantState, type Season, type Glyph } from '@/types';
 import { SPECIES } from '@/data/species';
 import { AsciiRenderer } from '@/rendering/AsciiRenderer';
+
+/**
+ * Visual cells for a freshly-laid hedge (Seedling stage after laying).
+ * Represents bent, woven stems at ground level with emerging base shoots.
+ */
+const LAID_SEEDLING_CELLS: Array<[number, number, Glyph]> = [
+  [-2, 0, { char: '=', fg: '#7a5a1a' }],
+  [-1, 0, { char: '=', fg: '#8a6a2a' }],
+  [ 0, 0, { char: '#', fg: '#9a7a3a' }],
+  [ 1, 0, { char: '=', fg: '#8a6a2a' }],
+  [ 2, 0, { char: '=', fg: '#7a5a1a' }],
+  [-1,-1, { char: '/', fg: '#6a4a1a' }],
+  [ 1,-1, { char: '\\', fg: '#6a4a1a' }],
+  [ 0, 1, { char: '|', fg: '#5a3a1a' }],
+  [ 0, 2, { char: '.', fg: '#4a2a0a' }],
+];
+
+/**
+ * Visual cells for a regrowing laid hedge (Juvenile stage after laying).
+ * Dense multi-stem regrowth with the laid base still visible.
+ */
+const LAID_JUVENILE_CELLS: Array<[number, number, Glyph]> = [
+  [-1,-2, { char: 'i', fg: '#5a9a2a' }],
+  [ 0,-2, { char: 'I', fg: '#6aaa3a' }],
+  [ 1,-2, { char: 'i', fg: '#5a9a2a' }],
+  [-1,-1, { char: '|', fg: '#6aaa3a' }],
+  [ 0,-1, { char: '|', fg: '#7aba4a' }],
+  [ 1,-1, { char: '|', fg: '#6aaa3a' }],
+  [-2, 0, { char: '=', fg: '#7a5a1a' }],
+  [-1, 0, { char: '#', fg: '#8a6a2a' }],
+  [ 0, 0, { char: 'H', fg: '#7a6a3a' }],
+  [ 1, 0, { char: '#', fg: '#8a6a2a' }],
+  [ 2, 0, { char: '=', fg: '#7a5a1a' }],
+  [ 0, 1, { char: '|', fg: '#5a3a1a' }],
+  [ 0, 2, { char: '.', fg: '#4a2a0a' }],
+];
 
 /** Recolor root cells to white/bone/ecru shades for contrast underground */
 function withRootColor(colOff: number, rowOff: number, glyph: Glyph): Glyph {
@@ -62,13 +98,18 @@ export class PlantRenderer {
       const species = SPECIES[plant.speciesId];
       if (!species) continue;
 
+      // Laid plants use special visuals for Seedling/Juvenile stages
+      const isLaid = plant.isLaid ?? false;
+      const useLaidVisual = isLaid && plant.stage <= GrowthStage.Juvenile;
+      const laidCells = plant.stage === GrowthStage.Seedling ? LAID_SEEDLING_CELLS : LAID_JUVENILE_CELLS;
       const visual = species.visuals[plant.stage];
 
       // Compute death fade progress (0 = just died, 1 = about to vanish)
       const fadeProgress = plant.isDying ? 1 - (plant.deathTimer / 3) : 0;
 
-      // Draw base cells
-      for (const [colOff, rowOff, glyph] of visual.cells) {
+      // Draw base cells (laid or normal)
+      const cellsToDraw = useLaidVisual ? laidCells : visual.cells;
+      for (const [colOff, rowOff, glyph] of cellsToDraw) {
         const absCol = plant.col + colOff;
         const absRow = plant.row + rowOff;
 
@@ -85,8 +126,8 @@ export class PlantRenderer {
       }
 
       // Draw seasonal decoration cells on top (flowers, fruit, berries)
-      // Skip decorations for dying plants
-      if (!plant.isDying) {
+      // Skip for dying plants and for laid seedlings/juveniles (no flowering while regrowing)
+      if (!plant.isDying && !useLaidVisual) {
         const seasonCells = visual.seasonalCells?.[season];
         if (seasonCells) {
           for (const [colOff, rowOff, glyph] of seasonCells) {

@@ -10,6 +10,10 @@ export class GrowthSimulator {
   private soilMap: SoilMap;
   /** Cumulative count of plants that have died */
   private deadPlantCount = 0;
+  /** Cumulative count of prune actions */
+  private pruneCount = 0;
+  /** Cumulative count of lay actions */
+  private layCount = 0;
 
   constructor(soilMap: SoilMap) {
     this.soilMap = soilMap;
@@ -27,6 +31,7 @@ export class GrowthSimulator {
       isDying: false,
       deathTimer: 0,
       selfSeeded,
+      isLaid: false,
     });
   }
 
@@ -67,8 +72,11 @@ export class GrowthSimulator {
         continue;
       }
 
-      // Seeds don't grow in winter (except holly)
-      if (plant.stage === GrowthStage.Seed && period.season === Season.Winter && species.id !== 'holly') {
+      // Laid plants regrow vigorously even from winter cuts — no winter dormancy check
+      const isLaid = plant.isLaid ?? false;
+
+      // Seeds don't grow in winter (except holly or laid plants)
+      if (plant.stage === GrowthStage.Seed && period.season === Season.Winter && species.id !== 'holly' && !isLaid) {
         continue;
       }
 
@@ -78,7 +86,13 @@ export class GrowthSimulator {
         modifier *= 1.5; // favorable season boost
       }
       if (period.season === Season.Winter && species.id !== 'holly') {
-        modifier *= 0.5; // winter slowdown (holly is evergreen)
+        // Laid plants regrow from established roots — much less winter slowdown
+        modifier *= isLaid ? 0.9 : 0.5;
+      }
+
+      // Laid plants regrow 2× faster — the root system is already established
+      if (isLaid) {
+        modifier *= 2.0;
       }
 
       // Soil quality modifier based on root depth
@@ -100,14 +114,18 @@ export class GrowthSimulator {
     const species = SPECIES[plant.speciesId];
     if (!species) return;
 
+    const isLaid = plant.isLaid ?? false;
+
     let damage = 0;
 
     // Overcrowding: count plants within 3 columns
+    // Laid plants tolerate crowding — their dense base is a feature, not a problem
     const neighbors = this.plants.filter(p =>
       p !== plant && !p.isDying && Math.abs(p.col - plant.col) <= 3
     ).length;
     if (neighbors >= 3) {
-      damage += 0.05 * (neighbors - 2);
+      const crowdingDamage = 0.05 * (neighbors - 2);
+      damage += isLaid ? crowdingDamage * 0.3 : crowdingDamage;
     }
 
     // Poor soil
@@ -115,28 +133,31 @@ export class GrowthSimulator {
     const soilQuality = this.soilMap.getColumnQuality(plant.col, rootDepth);
     if (soilQuality < 0.75) {
       const baseDrain = 0.02;
-      damage += (plant.stage <= GrowthStage.Seedling) ? baseDrain * 2 : baseDrain;
+      // Laid plants have deep, established roots — less sensitive to poor soil
+      const soilDamage = (plant.stage <= GrowthStage.Seedling) ? baseDrain * 2 : baseDrain;
+      damage += isLaid ? soilDamage * 0.5 : soilDamage;
     }
 
     // Winter stress (non-evergreen)
+    // Laid plants are cut at the ideal time — winter stress is greatly reduced
     const isEvergreen = species.id === 'holly';
     if (period.season === Season.Winter && !isEvergreen) {
       if (plant.stage <= GrowthStage.Seedling) {
-        damage += 0.03;
+        damage += isLaid ? 0.005 : 0.03;
       } else if (plant.stage === GrowthStage.Juvenile) {
-        damage += 0.01;
+        damage += isLaid ? 0.002 : 0.01;
       }
     }
 
-    // Frost damage to young plants
+    // Frost damage to young plants — laid plants are adapted to winter conditions
     if (weather === Weather.Frost && plant.stage <= GrowthStage.Seedling) {
-      damage += 0.02;
+      damage += isLaid ? 0.004 : 0.02;
     }
 
-    // Recovery in favorable seasons
+    // Recovery in favorable seasons — laid plants recover more vigorously
     let recovery = 0;
     if (period.season === Season.Spring || period.season === Season.Summer) {
-      recovery = 0.02;
+      recovery = isLaid ? 0.05 : 0.02;
     }
 
     plant.health = Math.max(0, Math.min(1, plant.health - damage + recovery));
@@ -149,8 +170,9 @@ export class GrowthSimulator {
     // Cap total plants
     if (this.plants.length >= MAX_PLANTS) return;
 
-    // 5% chance per period
-    if (Math.random() > 0.05) return;
+    // Laid plants self-seed slightly more (denser, healthier)
+    const seedChance = (plant.isLaid ?? false) ? 0.08 : 0.05;
+    if (Math.random() > seedChance) return;
 
     // Pick a random column offset (-4 to +4)
     const offset = Math.floor(Math.random() * 9) - 4;
@@ -163,6 +185,64 @@ export class GrowthSimulator {
     this.addPlant(plant.speciesId, newCol, plant.row, 0, true);
   }
 
+  /**
+   * Lay a hedge plant at the given column.
+   * Requires: Winter season AND the plant must be Mature.
+   * Laying resets the plant to Seedling with full health and the isLaid flag,
+   * which grants permanent bonuses to growth speed, winter hardiness, longevity,
+   * crowding tolerance, and ground-layer habitat density.
+   */
+  layHedge(col: number, season: Season): string | null {
+    const idx = this.plants.findIndex(p => p.col === col && !p.isDying);
+    if (idx === -1) return null;
+
+    if (season !== Season.Winter) {
+      return 'not-winter';
+    }
+
+    const plant = this.plants[idx];
+
+    if (plant.stage !== GrowthStage.Mature) {
+      return 'not-mature';
+    }
+
+    this.layCount++;
+    plant.isLaid = true;
+    plant.stage = GrowthStage.Seedling;
+    plant.ticksInStage = 0;
+    plant.health = 1.0; // laying stimulates vigorous regrowth
+
+    return 'laid';
+  }
+
+  /**
+   * Prune the plant in the given column.
+   * - Mature → reverts to Juvenile, health restored to 0.8
+   * - Juvenile → reverts to Seedling, health restored to 0.9
+   * - Seedling / Seed → removed entirely
+   * Returns a description of what happened, or null if no plant found.
+   */
+  prunePlant(col: number): string | null {
+    const idx = this.plants.findIndex(p => p.col === col && !p.isDying);
+    if (idx === -1) return null;
+
+    const plant = this.plants[idx];
+
+    this.pruneCount++;
+
+    if (plant.stage === GrowthStage.Mature || plant.stage === GrowthStage.Juvenile) {
+      const wasStage = plant.stage;
+      plant.stage = wasStage === GrowthStage.Mature ? GrowthStage.Juvenile : GrowthStage.Seedling;
+      plant.ticksInStage = 0;
+      plant.health = plant.stage === GrowthStage.Seedling ? 0.9 : 0.8;
+      return plant.stage === GrowthStage.Seedling ? 'cut back to seedling' : 'cut back to juvenile';
+    } else {
+      // Seed or Seedling — pull it up entirely
+      this.plants.splice(idx, 1);
+      return 'uprooted';
+    }
+  }
+
   getPlants(): ReadonlyArray<PlantState> {
     return this.plants;
   }
@@ -171,13 +251,28 @@ export class GrowthSimulator {
     return this.deadPlantCount;
   }
 
+  getPruneCount(): number {
+    return this.pruneCount;
+  }
+
+  getLayCount(): number {
+    return this.layCount;
+  }
+
   isColumnOccupied(col: number): boolean {
-    return this.plants.some(p => p.col === col);
+    return this.plants.some(p => p.col === col && !p.isDying);
   }
 
   /** Find the plant that occupies a given cell (if any), checking species visuals */
   getPlantAtCell(col: number, row: number): PlantState | null {
     for (const plant of this.plants) {
+      // Laid seedlings/juveniles use a wider footprint — check the laid visual bounds too
+      if ((plant.isLaid ?? false) && plant.stage <= GrowthStage.Juvenile) {
+        if (Math.abs(plant.col - col) <= 2 && plant.row + 2 >= row && plant.row - 2 <= row) {
+          return plant;
+        }
+        continue;
+      }
       const species = SPECIES[plant.speciesId];
       if (!species) continue;
       const visual = species.visuals[plant.stage];
@@ -201,9 +296,11 @@ export class GrowthSimulator {
 
   // ── Save/Load ──
 
-  /** Replace plants and dead count from save data */
-  loadState(plants: PlantState[], deadPlantCount: number): void {
-    this.plants = plants;
+  loadState(plants: PlantState[], deadPlantCount: number, pruneCount = 0, layCount = 0): void {
+    // Ensure isLaid field exists on loaded plants (backward compat)
+    this.plants = plants.map(p => ({ ...p, isLaid: p.isLaid ?? false }));
     this.deadPlantCount = deadPlantCount;
+    this.pruneCount = pruneCount;
+    this.layCount = layCount;
   }
 }

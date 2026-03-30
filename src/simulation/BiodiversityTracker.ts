@@ -229,6 +229,48 @@ const MILESTONES: MilestoneDef[] = [
     points: 30,
     check: (s) => s.deadPlantCount >= 1 && s.selfSeededPlants >= 1,
   },
+  {
+    id: 'first_prune',
+    title: 'First Cut',
+    description: 'Prune a plant for the first time',
+    category: MilestoneCategory.EcosystemHealth,
+    points: 10,
+    check: (s) => s.pruneCount >= 1,
+  },
+  {
+    id: 'prune_10',
+    title: 'Well-Managed Hedge',
+    description: 'Prune 10 times',
+    category: MilestoneCategory.EcosystemHealth,
+    points: 25,
+    check: (s) => s.pruneCount >= 10,
+  },
+
+  // ── Hedge laying ──────────────────────────────
+  {
+    id: 'first_lay',
+    title: 'Traditional Craft',
+    description: 'Lay your first hedge — a practice unchanged since the Iron Age',
+    category: MilestoneCategory.EcosystemHealth,
+    points: 30,
+    check: (s) => s.laidCount >= 1,
+  },
+  {
+    id: 'lay_3',
+    title: 'Living Boundary',
+    description: 'Lay 3 hedges',
+    category: MilestoneCategory.EcosystemHealth,
+    points: 50,
+    check: (s) => s.laidCount >= 3,
+  },
+  {
+    id: 'lay_mature',
+    title: 'Regrown from the Roots',
+    description: 'A laid hedge has grown back to full maturity',
+    category: MilestoneCategory.EcosystemHealth,
+    points: 60,
+    check: (s) => s.laidMaturePlants >= 1,
+  },
 ];
 
 const CATEGORY_NAMES: Record<MilestoneCategory, string> = {
@@ -260,6 +302,8 @@ export class BiodiversityTracker {
     occupiedLayers: number,
     creatureSpeciesIds: Set<string>,
     deadPlantCount: number,
+    pruneCount: number,
+    laidCount: number,
   ): MilestoneDef[] {
     // Track creature persistence
     if (totalCreatures > 0) {
@@ -273,6 +317,7 @@ export class BiodiversityTracker {
     const uniquePlantSpecies = new Set(livingPlants.map(p => p.speciesId)).size;
     const maturePlants = livingPlants.filter(p => p.stage === GrowthStage.Mature).length;
     const selfSeededPlants = livingPlants.filter(p => p.selfSeeded).length;
+    const laidMaturePlants = livingPlants.filter(p => (p.isLaid ?? false) && p.stage === GrowthStage.Mature).length;
 
     const snapshot: BiodiversitySnapshot = {
       totalPlants: livingPlants.length,
@@ -286,6 +331,9 @@ export class BiodiversityTracker {
       totalPeriods: currentPeriod,
       deadPlantCount,
       selfSeededPlants,
+      pruneCount,
+      laidCount,
+      laidMaturePlants,
     };
 
     // Check unachieved milestones

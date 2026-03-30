@@ -236,6 +236,8 @@ export class GameScene extends Phaser.Scene {
         this.habitatScorer.getOccupiedLayerCount(),
         this.creatureSim.getUniqueSpeciesIds(),
         this.growthSim.getDeadPlantCount(),
+        this.growthSim.getPruneCount(),
+        this.growthSim.getLayCount(),
       );
       if (newMilestones.length > 0) {
         this.hudRenderer.showMilestoneToasts(newMilestones);
@@ -335,6 +337,16 @@ export class GameScene extends Phaser.Scene {
         this.manualLoad();
         break;
 
+      // Prune
+      case 'p': case 'P':
+        this.tryPrune();
+        break;
+
+      // Lay hedge (H for Hedge-laying)
+      case 'h': case 'H':
+        this.tryLay();
+        break;
+
       // Export JSON
       case 'e': case 'E':
         this.exportSave();
@@ -378,6 +390,35 @@ export class GameScene extends Phaser.Scene {
     this.growthSim.addPlant(species.id, col, this.groundRow, this.timeClock.getTotalPeriods());
     this.plantRenderer.renderPlants(this.growthSim.getPlants(), this.timeClock.getCurrentPeriod().season);
     this.hudRenderer.showMessage(`Planted ${species.name}!`);
+  }
+
+  private tryPrune(): void {
+    const col = this.asciiRenderer.getCursorCol();
+    const result = this.growthSim.prunePlant(col);
+    if (!result) {
+      this.hudRenderer.showMessage('Nothing to prune here');
+      return;
+    }
+    const period = this.timeClock.getCurrentPeriod();
+    this.plantRenderer.renderPlants(this.growthSim.getPlants(), period.season);
+    this.hudRenderer.showMessage(`Pruned — ${result}`);
+  }
+
+  private tryLay(): void {
+    const col = this.asciiRenderer.getCursorCol();
+    const period = this.timeClock.getCurrentPeriod();
+    const result = this.growthSim.layHedge(col, period.season);
+
+    if (result === null) {
+      this.hudRenderer.showMessage('Nothing to lay here');
+    } else if (result === 'not-winter') {
+      this.hudRenderer.showMessage('Hedge laying can only be done in Winter');
+    } else if (result === 'not-mature') {
+      this.hudRenderer.showMessage('Only mature plants can be laid');
+    } else {
+      this.plantRenderer.renderPlants(this.growthSim.getPlants(), period.season);
+      this.hudRenderer.showMessage('Hedge laid — will regrow denser and stronger');
+    }
   }
 
   private restartGame(): void {
@@ -454,6 +495,8 @@ export class GameScene extends Phaser.Scene {
       achievedMilestoneIds: [...this.biodiversityTracker.getAchievedIds()],
       creaturePeriods: this.biodiversityTracker.getCreaturePeriods(),
       deadPlantCount: this.growthSim.getDeadPlantCount(),
+      pruneCount: this.growthSim.getPruneCount(),
+      laidCount: this.growthSim.getLayCount(),
       currentWeather: this.weatherEngine.getCurrentWeather(),
       selectedSpeciesIndex: this.selectedSpeciesIndex,
       viewMode: this.viewMode,
@@ -464,7 +507,7 @@ export class GameScene extends Phaser.Scene {
     this.playerName = save.playerName;
     this.timeClock.loadState(save.periodIndex, save.tickAccumulator);
     this.energyManager.setEnergy(save.energy);
-    this.growthSim.loadState(save.plants, save.deadPlantCount);
+    this.growthSim.loadState(save.plants, save.deadPlantCount, save.pruneCount ?? 0, save.laidCount ?? 0);
     this.creatureSim.loadState(save.creatures, save.creatureSpawnCounts, save.creatureNextId);
     this.biodiversityTracker.loadState(save.achievedMilestoneIds, save.creaturePeriods);
     this.weatherEngine.setWeather(save.currentWeather);

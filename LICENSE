@@ -1,21 +1,25 @@
-MIT License
+https://github.com/lucasmclaughlin/hedgeFun hedgeFun
 
-Copyright (c) 2026 Lucas McLaughlin
+This project is licensed under a dual-structure license to ensure the software remains open and the creative assets are protected.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+1. SOFTWARE (THE CODE)
+All source code, scripts, and build configurations located in this repository (excluding the assets/ directory) are licensed under the Apache License, Version 2.0.
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+Permissions: You may freely use, modify, and distribute the code for personal or commercial projects.
+Conditions: You must include a copy of the Apache 2.0 license and provide clear attribution to the original authors.
+Patent Grant: This license includes a contributor grant of patent rights.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+2. ASSETS (ART, AUDIO, AND LEVELS)
+All creative assets, including but not limited to images, sprites, 3D models, music, sound effects, and level design files (typically found in the assets/ or media/ directories), are licensed under Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0).
+
+Permissions: You may share and adapt the assets for non-commercial purposes.
+Conditions: You must give appropriate credit and distribute your contributions under the same license.
+Restriction: You cannot use these assets for commercial purposes without explicit written permission from the author.
+
+
+3. THIRD-PARTY LIBRARIES AND ENGINES
+This project utilizes third-party software components and libraries, including:
+
+Phaser Engine: Copyright © Richard Davey, Phaser Studio Inc. under The MIT License 	
+
+The Apache 2.0 license granted in Section 1 applies only to the original source code authored for this project and does not supersede the licenses of these third-party dependencies. Copies of third-party licenses can be found in the vendor/ or node_modules/ folders, or in the source headers of the respective files.

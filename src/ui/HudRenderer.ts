@@ -12,8 +12,24 @@ export class HudRenderer {
   private milestoneToast: Phaser.GameObjects.Text;
   private milestoneToastTimer = 0;
 
-  constructor(private timeClock: TimeClock) {
-    // Initialize your text objects here
+  constructor(private timeClock: TimeClock, private scene: Phaser.Scene) {
+    this.seasonText = this.scene.add.text(10, 10, '', { fontSize: '24px', color: '#ffffff' });
+    this.energyText = this.scene.add.text(10, 40, '', { fontSize: '24px', color: '#ffffff' });
+    this.weatherText = this.scene.add.text(10, 70, '', { fontSize: '24px', color: '#ffffff' });
+    this.creatureText = this.scene.add.text(10, 100, '', { fontSize: '24px', color: '#ffffff' });
+    this.scoreText = this.scene.add.text(10, 130, '', { fontSize: '24px', color: '#ffffff' });
+
+    for (let i = 0; i < 5; i++) {
+      const line = this.scene.add.text(10, 160 + i * 30, '', { fontSize: '24px', color: '#ffffff' });
+      this.speciesLines.push(line);
+    }
+
+    this.messageText = this.scene.add.text(10, 500, '', { fontSize: '24px', color: '#ffffff' });
+    this.milestoneToast = this.scene.add.text(this.scene.cameras.main.width / 2, this.scene.cameras.main.height / 2, '', {
+      fontSize: '36px',
+      color: '#ffffff',
+      align: 'center'
+    }).setOrigin(0.5).setVisible(false);
   }
 
   public update(): void {

@@ -63,7 +63,10 @@ export class AsciiRenderer {
     const pixelWidth = cols * cellWidth;
     const pixelHeight = rows * cellHeight;
 
-    // Create Phaser canvas texture and draw directly to it
+    // Create Phaser canvas texture — remove any stale copy first (scene restart)
+    if (scene.textures.exists('ascii-grid')) {
+      scene.textures.remove('ascii-grid');
+    }
     this.texture = scene.textures.createCanvas('ascii-grid', pixelWidth, pixelHeight)!;
     this.ctx = this.texture.getContext();
     this.image = scene.add.image(0, 0, 'ascii-grid');

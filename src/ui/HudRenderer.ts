@@ -678,6 +678,51 @@ export class HudRenderer {
     return this.menuOverlayVisible;
   }
 
+  /**
+   * Manual screen-space hit test for HUD buttons.
+   * Because HUD objects are ignored by the main camera (which may be zoomed),
+   * Phaser's built-in interactive events don't fire reliably. Call this from
+   * the scene's pointerup handler using raw screen coordinates.
+   * Returns true if a button was hit and handled.
+   */
+  handleClick(screenX: number, screenY: number): boolean {
+    // Menu toggle button (always present)
+    if (this.hitTestText(this.menuButton, screenX, screenY)) {
+      this.toggleMenuOverlay();
+      return true;
+    }
+    // Action buttons inside the menu overlay
+    if (this.menuOverlayVisible) {
+      if (this.hitTestText(this.menuSaveBtn, screenX, screenY)) {
+        this.onSaveCallback?.();
+        this.hideMenuOverlay();
+        return true;
+      }
+      if (this.hitTestText(this.menuLoadBtn, screenX, screenY)) {
+        this.onLoadCallback?.();
+        this.hideMenuOverlay();
+        return true;
+      }
+      if (this.hitTestText(this.menuRestartBtn, screenX, screenY)) {
+        this.onRestartCallback?.();
+        return true;
+      }
+      if (this.hitTestText(this.menuCloseBtn, screenX, screenY)) {
+        this.hideMenuOverlay();
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /** Hit-test a Text object using raw screen coordinates (hudCamera has zoom=1, scroll=0). */
+  private hitTestText(obj: Phaser.GameObjects.Text, x: number, y: number): boolean {
+    if (!obj.visible || obj.alpha === 0) return false;
+    const left = obj.x - obj.width * obj.originX;
+    const top  = obj.y - obj.height * obj.originY;
+    return x >= left && x <= left + obj.width && y >= top && y <= top + obj.height;
+  }
+
   /** Show or hide the entire HUD (used by screenshot mode) */
   setVisible(visible: boolean): void {
     for (const obj of this.getAllObjects()) {

@@ -146,11 +146,20 @@ export class GameScene extends Phaser.Scene {
       this.isDragging = false;
     });
 
-    // Click to move cursor (horizontal only, stays on ground row)
+    // Click to move cursor or interact with HUD buttons
     this.input.on('pointerup', (pointer: Phaser.Input.Pointer) => {
       const dx = Math.abs(pointer.x - this.dragStartX);
       const dy = Math.abs(pointer.y - this.dragStartY);
       if (dx < 5 && dy < 5) {
+        // HUD buttons are ignored by the main camera, so we do manual hit testing
+        if (this.hudRenderer.handleClick(pointer.x, pointer.y)) return;
+
+        // Exit screenshot mode on any non-HUD click
+        if (this.screenshotMode) {
+          this.exitScreenshotMode();
+          return;
+        }
+
         const worldX = pointer.worldX;
         const col = Math.floor(worldX / GRID_CONFIG.cellWidth);
         if (col >= 0 && col < GRID_CONFIG.cols) {

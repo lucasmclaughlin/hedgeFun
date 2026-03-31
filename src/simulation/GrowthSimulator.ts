@@ -266,9 +266,16 @@ export class GrowthSimulator {
   /** Find the plant that occupies a given cell (if any), checking species visuals */
   getPlantAtCell(col: number, row: number): PlantState | null {
     for (const plant of this.plants) {
-      // Laid seedlings/juveniles use a wider footprint — check the laid visual bounds too
-      if ((plant.isLaid ?? false) && plant.stage <= GrowthStage.Juvenile) {
-        if (Math.abs(plant.col - col) <= 2 && plant.row + 2 >= row && plant.row - 2 <= row) {
+      // Laid plants use wider custom visuals at every stage
+      if (plant.isLaid ?? false) {
+        // Mature laid: 7-wide base (-3..+3), 5 rows tall above ground (-4..+2)
+        // Juvenile laid: 5-wide (-2..+2), 4 tall (-2..+2)
+        // Seedling laid: 5-wide (-2..+2), 3 tall (-1..+2)
+        const halfW = plant.stage === GrowthStage.Mature ? 3 : 2;
+        const topRow = plant.stage === GrowthStage.Mature ? -4 :
+                       plant.stage === GrowthStage.Juvenile ? -2 : -1;
+        if (Math.abs(plant.col - col) <= halfW &&
+            row >= plant.row + topRow && row <= plant.row + 2) {
           return plant;
         }
         continue;

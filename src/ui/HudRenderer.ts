@@ -269,7 +269,7 @@ export class HudRenderer {
 
     this.menuButton.on('pointerover', () => this.menuButton.setColor('#cccccc'));
     this.menuButton.on('pointerout', () => this.menuButton.setColor('#888888'));
-    this.menuButton.on('pointerdown', () => this.toggleMenuOverlay());
+    // Click handled by manual hit-test in GameScene (pointerup) to avoid double-toggle
 
     // ── Menu overlay ──
     const menuPad = 48;
@@ -353,24 +353,11 @@ export class HudRenderer {
       .setAlpha(0)
       .setInteractive({ useHandCursor: true });
 
-    // Button hover effects and click handlers
+    // Hover effects only — clicks handled by manual hit-test in GameScene (pointerup)
     for (const btn of [this.menuSaveBtn, this.menuLoadBtn, this.menuRestartBtn, this.menuCloseBtn]) {
       btn.on('pointerover', () => btn.setColor('#eeffee'));
       btn.on('pointerout', () => btn.setColor('#8aaa8a'));
     }
-
-    this.menuSaveBtn.on('pointerdown', () => {
-      this.onSaveCallback?.();
-      this.hideMenuOverlay();
-    });
-    this.menuLoadBtn.on('pointerdown', () => {
-      this.onLoadCallback?.();
-      this.hideMenuOverlay();
-    });
-    this.menuRestartBtn.on('pointerdown', () => {
-      this.onRestartCallback?.();
-    });
-    this.menuCloseBtn.on('pointerdown', () => this.hideMenuOverlay());
   }
 
   /** Register callbacks for menu button actions */

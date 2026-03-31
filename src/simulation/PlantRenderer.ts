@@ -38,6 +38,53 @@ const LAID_JUVENILE_CELLS: Array<[number, number, Glyph]> = [
   [ 0, 2, { char: '.', fg: '#4a2a0a' }],
 ];
 
+/**
+ * Visual cells for a fully-grown laid hedge (Mature stage after laying).
+ * Wide horizontal pleacher base at ground level, multiple upright stems,
+ * and a broad dense canopy — clearly distinct from an upright plant.
+ */
+const LAID_MATURE_CELLS: Array<[number, number, Glyph]> = [
+  // Dense crown — broad leafy top
+  [-2, -4, { char: '{', fg: '#4aba4a' }],
+  [-1, -4, { char: '@', fg: '#5aca3a' }],
+  [ 0, -4, { char: '#', fg: '#6ada4a' }],
+  [ 1, -4, { char: '@', fg: '#5aca3a' }],
+  [ 2, -4, { char: '}', fg: '#4aba4a' }],
+  // Spreading mid canopy — wider than any upright plant
+  [-3, -3, { char: '{', fg: '#5aba3a' }],
+  [-2, -3, { char: 'f', fg: '#6aaa4a' }],
+  [-1, -3, { char: '@', fg: '#7aba4a' }],
+  [ 0, -3, { char: 'Y', fg: '#8aca5a' }],
+  [ 1, -3, { char: '@', fg: '#7aba4a' }],
+  [ 2, -3, { char: 'f', fg: '#6aaa4a' }],
+  [ 3, -3, { char: '}', fg: '#5aba3a' }],
+  // Lower canopy — lateral branching off each stem
+  [-2, -2, { char: '{', fg: '#6aaa3a' }],
+  [-1, -2, { char: '|', fg: '#5a9a3a' }],
+  [ 0, -2, { char: '#', fg: '#7aba4a' }],
+  [ 1, -2, { char: '|', fg: '#5a9a3a' }],
+  [ 2, -2, { char: '}', fg: '#6aaa3a' }],
+  // Multiple upright stems — vigorous regrowth from the laid base
+  [-2, -1, { char: '|', fg: '#6a7a2a' }],
+  [-1, -1, { char: 'Y', fg: '#7a8a3a' }],
+  [ 0, -1, { char: '|', fg: '#8a9a3a' }],
+  [ 1, -1, { char: 'Y', fg: '#7a8a3a' }],
+  [ 2, -1, { char: '|', fg: '#6a7a2a' }],
+  // Horizontal pleacher base — woven stems with stakes (H = hazel stake)
+  [-3,  0, { char: '=', fg: '#7a5a1a' }],
+  [-2,  0, { char: '=', fg: '#8a6a2a' }],
+  [-1,  0, { char: '-', fg: '#7a6a2a' }],
+  [ 0,  0, { char: 'H', fg: '#6a5a2a' }],
+  [ 1,  0, { char: '-', fg: '#7a6a2a' }],
+  [ 2,  0, { char: '=', fg: '#8a6a2a' }],
+  [ 3,  0, { char: '=', fg: '#7a5a1a' }],
+  // Root spread — established, wide root system
+  [-1,  1, { char: '|', fg: '#6a4a1a' }],
+  [ 0,  1, { char: '|', fg: '#5a3a1a' }],
+  [ 1,  1, { char: '|', fg: '#6a4a1a' }],
+  [ 0,  2, { char: '.', fg: '#4a2a0a' }],
+];
+
 /** Recolor root cells to white/bone/ecru shades for contrast underground */
 function withRootColor(colOff: number, rowOff: number, glyph: Glyph): Glyph {
   if (rowOff <= 0) return glyph; // only recolor underground cells
@@ -98,10 +145,13 @@ export class PlantRenderer {
       const species = SPECIES[plant.speciesId];
       if (!species) continue;
 
-      // Laid plants use special visuals for Seedling/Juvenile stages
+      // Laid plants use special visuals at every growth stage
       const isLaid = plant.isLaid ?? false;
-      const useLaidVisual = isLaid && plant.stage <= GrowthStage.Juvenile;
-      const laidCells = plant.stage === GrowthStage.Seedling ? LAID_SEEDLING_CELLS : LAID_JUVENILE_CELLS;
+      const useLaidVisual = isLaid;
+      const laidCells =
+        plant.stage === GrowthStage.Seedling ? LAID_SEEDLING_CELLS :
+        plant.stage === GrowthStage.Juvenile  ? LAID_JUVENILE_CELLS :
+                                                LAID_MATURE_CELLS;
       const visual = species.visuals[plant.stage];
 
       // Compute death fade progress (0 = just died, 1 = about to vanish)

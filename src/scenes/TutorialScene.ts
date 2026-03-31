@@ -8,11 +8,14 @@ const CONTROLS = [
   ['H', 'Lay hedge (Winter only, Mature plants)'],
   ['Arrow keys', 'Pan camera'],
   ['Mouse drag', 'Pan camera'],
+  ['Tab', 'Cycle speed (Pause / Slow / Normal / Fast)'],
   ['M', 'Milestone log (biodiversity score)'],
   ['V', 'Cycle view (Hedge / Underground / Full)'],
   ['S / L', 'Save / Load game'],
   ['E / I', 'Export / Import save file'],
-  ['R', 'Restart game'],
+  ['Z', 'Screenshot mode (hide UI, full zoom out)'],
+  ['R', 'Return to main menu'],
+  ['Esc / Menu button', 'In-game menu & controls'],
 ];
 
 const TIPS = [

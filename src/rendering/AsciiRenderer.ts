@@ -47,6 +47,7 @@ export class AsciiRenderer {
   private cursorRow = 30; // start on ground layer
   private cursorVisible = true;
   private cursorTimer = 0;
+  private cursorHidden = false;
 
   /** Environment state for color modulation */
   private tintR = 0;
@@ -113,6 +114,11 @@ export class AsciiRenderer {
 
   getCursorCol(): number { return this.cursorCol; }
   getCursorRow(): number { return this.cursorRow; }
+
+  /** Hide/show the cursor glyph (used by screenshot mode) */
+  setHideCursor(hidden: boolean): void {
+    this.cursorHidden = hidden;
+  }
 
   /** Called each frame to update animations and re-render dirty cells */
   update(delta: number): void {
@@ -204,7 +210,7 @@ export class AsciiRenderer {
         }
 
         // Draw cursor
-        if (col === this.cursorCol && row === this.cursorRow && this.cursorVisible) {
+        if (!this.cursorHidden && col === this.cursorCol && row === this.cursorRow && this.cursorVisible) {
           ctx.strokeStyle = '#ffff00';
           ctx.lineWidth = 2;
           ctx.strokeRect(x + 1, y + 1, cellWidth - 2, cellHeight - 2);

@@ -345,6 +345,20 @@ export interface CreatureState {
   id: number;
 }
 
+// ── Day/Night cycle (Book of Hours) ──────────────────────────────
+
+/** The 8 canonical hours of the day */
+export const DAY_HOUR_NAMES = [
+  'Matins',   // 0 — midnight
+  'Lauds',    // 1 — pre-dawn
+  'Prime',    // 2 — sunrise
+  'Terce',    // 3 — mid-morning
+  'Sext',     // 4 — noon
+  'None',     // 5 — afternoon
+  'Vespers',  // 6 — sunset
+  'Compline', // 7 — night
+] as const;
+
 // ── Save/Load system ──────────────────────────────
 
 export interface SaveData {

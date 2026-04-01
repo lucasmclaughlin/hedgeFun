@@ -1,4 +1,4 @@
-import { Season, SubSeason, MoonPhase, type TimePeriod } from '@/types';
+import { Season, SubSeason, MoonPhase, DAY_HOUR_NAMES, type TimePeriod } from '@/types';
 
 const SEASON_NAMES = ['Spring', 'Summer', 'Autumn', 'Winter'];
 const SUB_NAMES = ['Early', 'Mid', 'Late'];
@@ -81,9 +81,19 @@ export class TimeClock {
     return Math.floor(this.periodIndex / 12) + 1;
   }
 
-  /** Progress through current period as 0–1 */
+  /** Progress through current period as 0–1 (also = position in the day cycle) */
   getPeriodProgress(): number {
     return this.tickAccumulator / this.tickDurationMs;
+  }
+
+  /** Which of the 8 Book-of-Hours canonical hours we're currently in (0–7) */
+  getDayHourIndex(): number {
+    return Math.floor(this.getPeriodProgress() * 8) % 8;
+  }
+
+  /** Name of the current canonical hour */
+  getDayHourName(): string {
+    return DAY_HOUR_NAMES[this.getDayHourIndex()];
   }
 
   getTotalPeriods(): number {

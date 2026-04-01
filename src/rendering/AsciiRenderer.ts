@@ -18,6 +18,46 @@ const SEASON_GLOW: Record<Season, number> = {
   [Season.Winter]: 0.5,
 };
 
+/** Sky background colour at each of the 8 canonical hours (midnight→night) */
+const CANONICAL_SKY_BG = [
+  '#05050a', // 0 Matins   — midnight
+  '#09070f', // 1 Lauds    — pre-dawn
+  '#200c06', // 2 Prime    — sunrise
+  '#0c1628', // 3 Terce    — morning
+  '#111c30', // 4 Sext     — midday
+  '#0f1828', // 5 None     — afternoon
+  '#1e0e08', // 6 Vespers  — sunset
+  '#07070e', // 7 Compline — night
+] as const;
+
+/** Global overlay tint deltas [R, G, B] at each canonical hour */
+const CANONICAL_DAY_TINTS: [number, number, number][] = [
+  [-16, -16, -10],  // 0 Matins   — very dim blue-black
+  [-14, -14,  -8],  // 1 Lauds    — dim
+  [  4,  -4, -12],  // 2 Prime    — dawn orange
+  [  2,   2,   4],  // 3 Terce    — morning light
+  [  4,   6,   8],  // 4 Sext     — bright midday
+  [  2,   2,   4],  // 5 None     — afternoon
+  [  8,  -4, -12],  // 6 Vespers  — sunset warm
+  [-12, -12,  -8],  // 7 Compline — dusk
+];
+
+/** Sky layer row boundary */
+const SKY_END_ROW = 7;
+
+function lerpHex(a: string, b: string, t: number): string {
+  const ar = parseInt(a.substring(1, 3), 16);
+  const ag = parseInt(a.substring(3, 5), 16);
+  const ab = parseInt(a.substring(5, 7), 16);
+  const br = parseInt(b.substring(1, 3), 16);
+  const bg = parseInt(b.substring(3, 5), 16);
+  const bb = parseInt(b.substring(5, 7), 16);
+  const r  = Math.round(ar + (br - ar) * t);
+  const g  = Math.round(ag + (bg - ag) * t);
+  const bv = Math.round(ab + (bb - ab) * t);
+  return '#' + ((r << 16) | (g << 8) | bv).toString(16).padStart(6, '0');
+}
+
 /** Weather color tints [R, G, B] offsets */
 const WEATHER_TINTS: Record<Weather, [number, number, number]> = {
   [Weather.Clear]: [3, 3, 4],
@@ -56,6 +96,12 @@ export class AsciiRenderer {
   private glowBlur = 1.5;
   private animTime = 0;
 
+  /** Day/night state */
+  private dayTintR = 4;
+  private dayTintG = 6;
+  private dayTintB = 8;
+  private skyBgColor = '#111c30'; // default: midday
+
   constructor(scene: Phaser.Scene) {
     this.scene = scene;
 
@@ -75,6 +121,20 @@ export class AsciiRenderer {
     // Initial render
     this.renderFullGrid();
     this.texture.refresh();
+  }
+
+  /** Update day/night phase (0–1, where 0/1 = midnight, 0.5 = noon) */
+  setDayPhase(phase: number): void {
+    const hourF = phase * 8;
+    const hourA = Math.floor(hourF) % 8;
+    const hourB = (hourA + 1) % 8;
+    const t = hourF - Math.floor(hourF);
+    const tA = CANONICAL_DAY_TINTS[hourA];
+    const tB = CANONICAL_DAY_TINTS[hourB];
+    this.dayTintR = tA[0] + (tB[0] - tA[0]) * t;
+    this.dayTintG = tA[1] + (tB[1] - tA[1]) * t;
+    this.dayTintB = tA[2] + (tB[2] - tA[2]) * t;
+    this.skyBgColor = lerpHex(CANONICAL_SKY_BG[hourA], CANONICAL_SKY_BG[hourB], t);
   }
 
   /** Update environment tints from current season and weather */
@@ -149,9 +209,9 @@ export class AsciiRenderer {
     const pulse = Math.sin(this.animTime * 0.0025) * 4
                 + Math.sin(this.animTime * 0.0014) * 3;
 
-    const nr = Math.max(0, Math.min(255, Math.round(r + this.tintR + pulse)));
-    const ng = Math.max(0, Math.min(255, Math.round(g + this.tintG + pulse * 0.6)));
-    const nb = Math.max(0, Math.min(255, Math.round(b + this.tintB)));
+    const nr = Math.max(0, Math.min(255, Math.round(r + this.tintR + this.dayTintR + pulse)));
+    const ng = Math.max(0, Math.min(255, Math.round(g + this.tintG + this.dayTintG + pulse * 0.6)));
+    const nb = Math.max(0, Math.min(255, Math.round(b + this.tintB + this.dayTintB)));
 
     return '#' + ((nr << 16) | (ng << 8) | nb).toString(16).padStart(6, '0');
   }
@@ -165,7 +225,8 @@ export class AsciiRenderer {
     ctx.font = `${fontSize}px ${fontFamily}`;
 
     for (let row = 0; row < rows; row++) {
-      const bgColor = getBackgroundColor(row);
+      const isSkyRow = row <= SKY_END_ROW;
+      const bgColor = isSkyRow ? this.skyBgColor : getBackgroundColor(row);
 
       for (let col = 0; col < cols; col++) {
         const x = col * cellWidth;

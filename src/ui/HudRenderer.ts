@@ -372,6 +372,7 @@ export class HudRenderer {
     subName: string,
     moonSymbol: string,
     moonName: string,
+    dayHourName: string,
     year: number,
     period: TimePeriod,
     _moon: MoonPhase,
@@ -393,7 +394,7 @@ export class HudRenderer {
     milestonesTotal: number,
   ): void {
     const color = SEASON_COLORS[period.season];
-    this.seasonText.setText(`Year ${year}  ${subName} ${seasonName} ${moonSymbol} ${moonName}`);
+    this.seasonText.setText(`Year ${year}  ${subName} ${seasonName}  ${dayHourName}  ${moonSymbol} ${moonName}`);
     this.seasonText.setColor(color);
 
     const bar = '\u2588'.repeat(Math.min(energy, 20)) + '\u2591'.repeat(Math.max(0, 20 - energy));

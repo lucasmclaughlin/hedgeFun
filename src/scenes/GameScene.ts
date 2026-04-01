@@ -305,6 +305,7 @@ export class GameScene extends Phaser.Scene {
       this.timeClock.getSubSeasonName(),
       this.timeClock.getMoonSymbol(),
       this.timeClock.getMoonPhaseName(),
+      this.timeClock.getDayHourName(),
       this.timeClock.getYear(),
       period,
       moon,
@@ -326,6 +327,7 @@ export class GameScene extends Phaser.Scene {
       this.biodiversityTracker.getTotalMilestoneCount(),
     );
 
+    this.asciiRenderer.setDayPhase(this.timeClock.getPeriodProgress());
     this.asciiRenderer.update(delta);
   }
 

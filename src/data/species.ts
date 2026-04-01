@@ -19,6 +19,13 @@ export const SPECIES: Record<string, SpeciesDef> = {
       [Season.Autumn]: 'Fruiting',
       [Season.Winter]: 'Dormant',
     },
+    pruning: {
+      coppiceable: true,
+      pollardable: false,
+      coppiceRegrowth: 1.5,
+      coppiceResult: 'Hawthorn coppiced — will regrow strongly from rootstock',
+      pollardResult: '',
+    },
     ticksPerStage: {
       [GrowthStage.Seed]: 2,
       [GrowthStage.Seedling]: 3,
@@ -146,6 +153,13 @@ export const SPECIES: Record<string, SpeciesDef> = {
       [Season.Autumn]: 'Fruiting',
       [Season.Winter]: 'Dormant',
     },
+    pruning: {
+      coppiceable: true,
+      pollardable: false,
+      coppiceRegrowth: 1.4,
+      coppiceResult: 'Blackthorn coppiced — will throw up vigorous suckers from the root',
+      pollardResult: '',
+    },
     ticksPerStage: {
       [GrowthStage.Seed]: 3,
       [GrowthStage.Seedling]: 4,
@@ -263,6 +277,13 @@ export const SPECIES: Record<string, SpeciesDef> = {
       [Season.Autumn]: 'Fruiting',
       [Season.Winter]: 'Dormant',
     },
+    pruning: {
+      coppiceable: true,
+      pollardable: true,
+      coppiceRegrowth: 2.2,
+      coppiceResult: 'Elder coppiced — will regrow with remarkable speed',
+      pollardResult: 'Elder pollarded — new growth will spring from the crown',
+    },
     ticksPerStage: {
       [GrowthStage.Seed]: 1,
       [GrowthStage.Seedling]: 2,
@@ -379,7 +400,7 @@ export const SPECIES: Record<string, SpeciesDef> = {
   hazel: {
     id: 'hazel',
     name: 'Hazel',
-    description: 'Tall coppice tree with dangling catkins in spring and hazelnuts in autumn.',
+    description: 'Classic coppice shrub. Catkins in spring, hazelnuts in autumn at hedge height. The finest coppice species.',
     energyCost: 3,
     plantableSeasons: [Season.Autumn],
     growthRate: 0.9,
@@ -395,7 +416,14 @@ export const SPECIES: Record<string, SpeciesDef> = {
       [GrowthStage.Juvenile]: 5,
       [GrowthStage.Mature]: Infinity,
     },
-    matureLayers: [Layer.UpperCanopy, Layer.MidCanopy],
+    matureLayers: [Layer.MidCanopy, Layer.LowerShrub],
+    pruning: {
+      coppiceable: true,
+      pollardable: true,
+      coppiceRegrowth: 1.9,
+      coppiceResult: 'Hazel coppiced — will regrow as vigorous multi-stemmed stool',
+      pollardResult: 'Hazel pollarded — new growth will spring from the crown',
+    },
     visuals: {
       [GrowthStage.Seed]: {
         cells: [
@@ -421,8 +449,8 @@ export const SPECIES: Record<string, SpeciesDef> = {
           [0, -3, { char: '@', fg: '#6a9a3a' }],
           [-1, -3, { char: '{', fg: '#7aaa4a' }],
           [1, -3, { char: '}', fg: '#7aaa4a' }],
-          [0, -5, { char: '^', fg: '#7aaa4a' }],
-          // roots — deep taproot
+          [0, -4, { char: '^', fg: '#7aaa4a' }],
+          // roots
           [0, 1, { char: '|', fg: '#5a3a0a' }],
           [-1, 1, { char: '\\', fg: '#4a2a00' }],
           [1, 1, { char: '/', fg: '#4a2a00' }],
@@ -433,99 +461,91 @@ export const SPECIES: Record<string, SpeciesDef> = {
         ],
         seasonalCells: {
           [Season.Spring]: [
-            // Catkins
-            [-1, -4, { char: ':', fg: '#caba3a' }],
-            [1, -4, { char: ':', fg: '#caba3a' }],
-            [0, -4, { char: '@', fg: '#6a9a3a' }],
+            [-1, -3, { char: ':', fg: '#caba3a' }],
+            [1, -3, { char: ':', fg: '#caba3a' }],
           ],
           [Season.Summer]: [
-            // Foliage
-            [-1, -4, { char: '{', fg: '#7aaa4a' }],
-            [1, -4, { char: '}', fg: '#7aaa4a' }],
-            [0, -4, { char: '@', fg: '#6a9a3a' }],
+            [-1, -3, { char: '{', fg: '#7aaa4a' }],
+            [1, -3, { char: '}', fg: '#7aaa4a' }],
           ],
           [Season.Autumn]: [
-            // Nuts
-            [0, -4, { char: 'O', fg: '#9a7a3a' }],
-            [-1, -4, { char: '{', fg: '#7aaa4a' }],
-            [1, -4, { char: '}', fg: '#7aaa4a' }],
+            [-1, -2, { char: 'o', fg: '#9a7a3a' }],
+            [1, -2, { char: 'o', fg: '#9a7a3a' }],
+            [0, -3, { char: 'O', fg: '#ba8a3a' }],
           ],
         },
       },
       [GrowthStage.Mature]: {
         cells: [
-          // tall trunk
-          [0, 0, { char: '|', fg: '#7a5a2a' }],
-          [0, -1, { char: '|', fg: '#7a5a2a' }],
-          [0, -2, { char: '|', fg: '#6a4a1a' }],
-          [0, -3, { char: '|', fg: '#6a4a1a' }],
-          [0, -4, { char: '|', fg: '#5a3a0a' }],
-          [0, -5, { char: '|', fg: '#5a3a0a' }],
-          [0, -6, { char: 'Y', fg: '#5a3a0a' }],
-          // canopy (base foliage — nuts/catkins added seasonally)
-          [-1, -7, { char: '{', fg: '#6a9a3a' }],
-          [0, -7, { char: '@', fg: '#7aaa4a' }],
-          [1, -7, { char: '}', fg: '#6a9a3a' }],
-          [-2, -7, { char: '(', fg: '#5a8a2a' }],
-          [2, -7, { char: ')', fg: '#5a8a2a' }],
-          [-1, -8, { char: '{', fg: '#6a9a3a' }],
-          [1, -8, { char: '}', fg: '#6a9a3a' }],
-          [-1, -9, { char: '{', fg: '#7aaa4a' }],
-          [1, -9, { char: '}', fg: '#7aaa4a' }],
-          [0, -10, { char: '@', fg: '#7aaa4a' }],
-          [0, -11, { char: '^', fg: '#8aba5a' }],
-          // branches
-          [-1, -6, { char: '/', fg: '#7aaa4a' }],
-          [1, -6, { char: '\\', fg: '#7aaa4a' }],
-          [-2, -6, { char: '{', fg: '#6a9a3a' }],
-          [2, -6, { char: '}', fg: '#6a9a3a' }],
+          // Multi-stemmed base — characteristic hedge hazel
+          [-1, 0, { char: '/', fg: '#7a5a2a' }],
+          [ 0, 0, { char: '|', fg: '#7a5a2a' }],
+          [ 1, 0, { char: '\\', fg: '#7a5a2a' }],
+          // Lower branches (nuts/catkins hang here in season)
+          [-2, -1, { char: '{', fg: '#6a5a2a' }],
+          [-1, -1, { char: '/', fg: '#6a5a2a' }],
+          [ 0, -1, { char: '|', fg: '#7a5a2a' }],
+          [ 1, -1, { char: '\\', fg: '#6a5a2a' }],
+          [ 2, -1, { char: '}', fg: '#6a5a2a' }],
+          // Mid canopy
+          [-2, -2, { char: '{', fg: '#6a9a3a' }],
+          [-1, -2, { char: '@', fg: '#7aaa4a' }],
+          [ 0, -2, { char: '|', fg: '#6a5a2a' }],
+          [ 1, -2, { char: '@', fg: '#7aaa4a' }],
+          [ 2, -2, { char: '}', fg: '#6a9a3a' }],
+          // Upper branches
+          [-2, -3, { char: '(', fg: '#5a8a2a' }],
+          [-1, -3, { char: '@', fg: '#7aaa4a' }],
+          [ 0, -3, { char: 'Y', fg: '#6a5a2a' }],
+          [ 1, -3, { char: '@', fg: '#7aaa4a' }],
+          [ 2, -3, { char: ')', fg: '#5a8a2a' }],
+          // Crown
           [-1, -4, { char: '{', fg: '#6a9a3a' }],
-          [1, -4, { char: '}', fg: '#6a9a3a' }],
-          [-1, -3, { char: '/', fg: '#7aaa4a' }],
-          [1, -3, { char: '\\', fg: '#7aaa4a' }],
-          [-1, -2, { char: '{', fg: '#6a9a3a' }],
-          [1, -2, { char: '}', fg: '#6a9a3a' }],
-          [-1, -1, { char: '{', fg: '#5a8a2a' }],
-          [1, -1, { char: '}', fg: '#5a8a2a' }],
-          // roots — deep taproot
-          [0, 1, { char: '|', fg: '#6a4a1a' }],
+          [ 0, -4, { char: '@', fg: '#7aaa4a' }],
+          [ 1, -4, { char: '}', fg: '#6a9a3a' }],
+          [ 0, -5, { char: '^', fg: '#8aba5a' }],
+          // Roots — hazel has wide spreading roots from the stool
+          [ 0, 1, { char: '|', fg: '#6a4a1a' }],
           [-1, 1, { char: '\\', fg: '#5a3a0a' }],
-          [1, 1, { char: '/', fg: '#5a3a0a' }],
-          [0, 2, { char: '|', fg: '#5a3a0a' }],
+          [ 1, 1, { char: '/', fg: '#5a3a0a' }],
+          [ 0, 2, { char: '|', fg: '#5a3a0a' }],
           [-1, 2, { char: '~', fg: '#4a2a00' }],
-          [1, 2, { char: '~', fg: '#4a2a00' }],
-          [0, 3, { char: '|', fg: '#4a2a00' }],
+          [ 1, 2, { char: '~', fg: '#4a2a00' }],
+          [ 0, 3, { char: '|', fg: '#4a2a00' }],
           [-2, 3, { char: '~', fg: '#3a2000' }],
-          [2, 3, { char: '~', fg: '#3a2000' }],
-          [0, 4, { char: ':', fg: '#3a2000' }],
+          [ 2, 3, { char: '~', fg: '#3a2000' }],
+          [ 0, 4, { char: ':', fg: '#3a2000' }],
           [-1, 4, { char: '.', fg: '#2a1800' }],
-          [1, 4, { char: '.', fg: '#2a1800' }],
-          [0, 5, { char: '.', fg: '#2a1800' }],
-          [0, 6, { char: '.', fg: '#1a1000' }],
+          [ 1, 4, { char: '.', fg: '#2a1800' }],
+          [ 0, 5, { char: '.', fg: '#2a1800' }],
         ],
         seasonalCells: {
           [Season.Spring]: [
-            // Dangling catkins
-            [-1, -5, { char: ':', fg: '#caba3a' }],
-            [1, -5, { char: ':', fg: '#caba3a' }],
-            [0, -8, { char: '@', fg: '#7aaa4a' }],
-            [0, -9, { char: '@', fg: '#6a9a3a' }],
+            // Dangling catkins on lower branches — classic hazel spring display
+            [-1, -1, { char: ':', fg: '#caba3a' }],
+            [ 1, -1, { char: ':', fg: '#caba3a' }],
+            [ 0, -2, { char: ':', fg: '#caba3a' }],
+            [-1, -3, { char: '{', fg: '#7aaa4a' }],
+            [ 1, -3, { char: '}', fg: '#7aaa4a' }],
           ],
           [Season.Summer]: [
-            // Full foliage
-            [-1, -5, { char: '{', fg: '#6a9a3a' }],
-            [1, -5, { char: '}', fg: '#6a9a3a' }],
-            [0, -8, { char: '@', fg: '#7aaa4a' }],
-            [0, -9, { char: '@', fg: '#7aaa4a' }],
+            // Full rounded hazel leaves
+            [-2, -2, { char: '(', fg: '#7aaa4a' }],
+            [ 2, -2, { char: ')', fg: '#7aaa4a' }],
+            [ 0, -2, { char: '@', fg: '#7aaa4a' }],
+            [-1, -3, { char: '{', fg: '#7aaa4a' }],
+            [ 1, -3, { char: '}', fg: '#7aaa4a' }],
           ],
           [Season.Autumn]: [
-            // Hazelnuts
-            [-1, -5, { char: '{', fg: '#6a9a3a' }],
-            [1, -5, { char: '}', fg: '#6a9a3a' }],
-            [0, -8, { char: 'O', fg: '#ba8a3a' }],
-            [0, -9, { char: 'O', fg: '#ba8a3a' }],
+            // Hazelnuts in their husks — visible at mid and lower branch height
+            [-1, -1, { char: 'o', fg: '#9a7a3a' }],
+            [ 1, -1, { char: 'o', fg: '#9a7a3a' }],
+            [-1, -2, { char: 'o', fg: '#9a7a3a' }],
+            [ 0, -2, { char: 'O', fg: '#ba8a3a' }],
+            [ 1, -2, { char: 'o', fg: '#9a7a3a' }],
+            [ 0, -3, { char: 'O', fg: '#ba8a3a' }],
           ],
-          // Winter: bare
+          // Winter: bare multi-stems
         },
       },
     },
@@ -543,6 +563,13 @@ export const SPECIES: Record<string, SpeciesDef> = {
       [Season.Summer]: 'Blooming',
       [Season.Autumn]: 'Rosehips',
       [Season.Winter]: 'Dormant',
+    },
+    pruning: {
+      coppiceable: false,
+      pollardable: false,
+      coppiceRegrowth: 1.0,
+      coppiceResult: '',
+      pollardResult: '',
     },
     ticksPerStage: {
       [GrowthStage.Seed]: 2,
@@ -678,6 +705,13 @@ export const SPECIES: Record<string, SpeciesDef> = {
       [Season.Summer]: 'Evergreen',
       [Season.Autumn]: 'Berrying',
       [Season.Winter]: 'Evergreen',
+    },
+    pruning: {
+      coppiceable: false,
+      pollardable: true,
+      coppiceRegrowth: 1.0,
+      coppiceResult: '',
+      pollardResult: 'Holly pollarded — will form a distinctive pollard crown',
     },
     ticksPerStage: {
       [GrowthStage.Seed]: 3,

@@ -105,6 +105,20 @@ export interface StageVisual {
   seasonalCells?: Partial<Record<Season, Array<[number, number, Glyph]>>>;
 }
 
+/** How a species responds to managed pruning operations */
+export interface PruningProfile {
+  /** Can be cut to ground-level stool; regrows as vigorous multi-stem */
+  coppiceable: boolean;
+  /** Can have crown removed from a standing trunk; regrows from pollard head */
+  pollardable: boolean;
+  /** Growth speed multiplier applied when regrowing from coppice stool */
+  coppiceRegrowth: number;
+  /** Message shown to player after a successful coppice */
+  coppiceResult: string;
+  /** Message shown to player after a successful pollard */
+  pollardResult: string;
+}
+
 /** Species definition — pure data */
 export interface SpeciesDef {
   id: string;
@@ -119,6 +133,8 @@ export interface SpeciesDef {
   seasonalActivity: Record<Season, string>;
   /** Short flavour description for info panel */
   description: string;
+  /** How this species responds to coppicing and pollarding */
+  pruning: PruningProfile;
 }
 
 /** Runtime state of a single planted instance */
@@ -139,6 +155,10 @@ export interface PlantState {
   selfSeeded: boolean;
   /** True if this plant has been hedge-laid — persists through regrowth, improves density and longevity */
   isLaid: boolean;
+  /** True if this plant has been coppiced — regrows as multi-stemmed stool with vigour bonus */
+  isCoppiced: boolean;
+  /** True if this plant has been pollarded — regrows from a high trunk crown */
+  isPollarded: boolean;
 }
 
 // ── Weather system ──────────────────────────────

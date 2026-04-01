@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HedgeFun Art Tool</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #141414;
+      color: #ccc;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    header {
+      background: #1e2e1e;
+      border-bottom: 1px solid #2a3a2a;
+      padding: 7px 14px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      flex-shrink: 0;
+    }
+    header h1 { font-size: 14px; color: #6aba4a; letter-spacing: 0.06em; }
+
+    #main { display: flex; flex: 1; overflow: hidden; }
+
+    /* ── Sidebar ── */
+    aside#sidebar {
+      width: 170px;
+      flex-shrink: 0;
+      background: #181818;
+      border-right: 1px solid #252525;
+      overflow-y: auto;
+    }
+    .section-header {
+      padding: 5px 10px 4px;
+      font-size: 10px;
+      color: #6aba4a;
+      letter-spacing: 0.12em;
+      background: #1c1c1c;
+      border-bottom: 1px solid #252525;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+    .list-item {
+      padding: 5px 10px;
+      cursor: pointer;
+      color: #999;
+      border-bottom: 1px solid #202020;
+      font-size: 12px;
+    }
+    .list-item:hover { background: #222; color: #ddd; }
+    .list-item.active { background: #1e2e1e; color: #6aba4a; }
+
+    /* ── Preview area ── */
+    #preview-area { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+    #tabs {
+      background: #1c1c1c;
+      border-bottom: 1px solid #252525;
+      padding: 6px 10px;
+      flex-shrink: 0;
+      min-height: 34px;
+    }
+    .tab-row { display: flex; align-items: center; gap: 4px; margin-bottom: 4px; }
+    .tab-row:last-child { margin-bottom: 0; }
+    .tab {
+      background: #242424;
+      border: 1px solid #303030;
+      color: #777;
+      font-family: 'Courier New', monospace;
+      font-size: 11px;
+      padding: 2px 8px;
+      cursor: pointer;
+      border-radius: 2px;
+    }
+    .tab:hover { background: #2e2e2e; color: #aaa; }
+    .tab.active { background: #1e2e1e; border-color: #3a6a1a; color: #6aba4a; }
+    .toggle-label {
+      display: flex; align-items: center; gap: 4px;
+      font-size: 11px; color: #777; cursor: pointer; margin-right: 8px;
+    }
+    .tab-row span { font-size: 11px; color: #666; }
+
+    /* ── Content row: canvas + right panel ── */
+    #content { flex: 1; display: flex; overflow: hidden; }
+
+    #canvas-wrapper {
+      flex: 1;
+      overflow: auto;
+      background: #0e0e0e;
+      padding: 20px;
+    }
+    #preview-canvas { cursor: crosshair; image-rendering: pixelated; display: block; }
+
+    /* ── Right panel ── */
+    #right-panel {
+      width: 210px;
+      flex-shrink: 0;
+      background: #181818;
+      border-left: 1px solid #252525;
+      display: flex;
+      flex-direction: column;
+    }
+
+    #editor-panel {
+      flex: 1;
+      padding: 10px;
+      overflow-y: auto;
+      border-bottom: 1px solid #252525;
+    }
+    .editor-hint { color: #4a4a4a; font-size: 11px; line-height: 1.5; }
+    .editor-title { color: #6aba4a; font-size: 11px; margin-bottom: 10px; letter-spacing: 0.04em; }
+    .editor-row { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
+    .editor-row label { color: #666; width: 42px; font-size: 11px; flex-shrink: 0; }
+
+    .char-input {
+      width: 38px;
+      background: #222;
+      border: 1px solid #333;
+      color: #eee;
+      font-family: 'Courier New', monospace;
+      font-size: 20px;
+      padding: 1px 4px;
+      text-align: center;
+    }
+    .hex-input {
+      width: 76px;
+      background: #222;
+      border: 1px solid #333;
+      color: #ccc;
+      font-family: 'Courier New', monospace;
+      font-size: 11px;
+      padding: 3px 5px;
+    }
+    .color-picker {
+      width: 30px; height: 24px;
+      border: 1px solid #333; padding: 1px;
+      background: #222; cursor: pointer;
+    }
+    .delete-btn {
+      background: #221616; border: 1px solid #3a2020;
+      color: #994444; font-family: 'Courier New', monospace;
+      font-size: 11px; padding: 3px 8px; cursor: pointer;
+      border-radius: 2px; margin-top: 2px;
+    }
+    .delete-btn:hover { background: #2e1818; }
+
+    #export-panel { padding: 10px; flex-shrink: 0; }
+    .panel-btns { display: flex; gap: 6px; margin-bottom: 6px; }
+
+    #export-btn, #anim-btn {
+      background: #1e2a1e; border: 1px solid #2a4a2a;
+      color: #6aba4a; font-family: 'Courier New', monospace;
+      font-size: 11px; padding: 3px 8px; cursor: pointer; border-radius: 2px;
+    }
+    #export-btn:hover, #anim-btn:hover { background: #243024; }
+
+    #export-output {
+      width: 100%; height: 110px;
+      background: #0e0e0e; border: 1px solid #252525;
+      color: #7a9a7a; font-family: 'Courier New', monospace;
+      font-size: 10px; padding: 4px; resize: vertical;
+    }
+
+    /* scale controls */
+    #scale-row { display: flex; align-items: center; gap: 8px; font-size: 11px; color: #666; }
+    #scale-row input[type=range] { width: 80px; }
+
+    /* Frame management */
+    .frame-group { display: inline-flex; align-items: stretch; margin-right: 2px; }
+    .frame-group .tab { border-radius: 2px 0 0 2px; margin-right: 0; }
+    .frame-x-btn {
+      background: #2a1a1a; border: 1px solid #3a2020; border-left: none;
+      color: #774444; font-size: 11px; padding: 0 5px; cursor: pointer;
+      border-radius: 0 2px 2px 0; line-height: 1;
+    }
+    .frame-x-btn:hover { background: #3a1a1a; color: #cc5555; }
+    .add-frame-btn {
+      background: #1a2a1a; border: 1px solid #2a4a2a;
+      color: #5a9a3a; font-family: 'Courier New', monospace;
+      font-size: 11px; padding: 2px 7px; cursor: pointer; border-radius: 2px;
+      margin-left: 4px;
+    }
+    .add-frame-btn:hover { background: #223022; color: #7aba5a; }
+
+    /* Add/cancel cell buttons */
+    .add-cell-btn {
+      background: #1a2a1a; border: 1px solid #2a4a2a;
+      color: #6aba4a; font-family: 'Courier New', monospace;
+      font-size: 11px; padding: 4px 10px; cursor: pointer;
+      border-radius: 2px; margin-top: 6px; display: block; width: 100%;
+    }
+    .add-cell-btn:hover { background: #223022; }
+    .cancel-btn {
+      background: #222; border: 1px solid #333;
+      color: #666; font-family: 'Courier New', monospace;
+      font-size: 11px; padding: 3px 10px; cursor: pointer;
+      border-radius: 2px; margin-top: 4px; display: block; width: 100%;
+    }
+    .cancel-btn:hover { background: #2a2a2a; color: #999; }
+    .add-title { color: #6aba4a !important; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>HedgeFun Art Tool</h1>
+    <div id="scale-row">
+      scale: <input type="range" id="scale-slider" min="1" max="4" step="0.5" value="2" />
+      <span id="scale-label">2×</span>
+    </div>
+    <button id="anim-btn">▶ Animate</button>
+  </header>
+  <div id="main">
+    <aside id="sidebar">
+      <div class="section-header">PLANTS</div>
+      <div id="plant-list"></div>
+      <div class="section-header">CREATURES</div>
+      <div id="creature-list"></div>
+    </aside>
+    <section id="preview-area">
+      <div id="tabs"></div>
+      <div id="content">
+        <div id="canvas-wrapper">
+          <canvas id="preview-canvas"></canvas>
+        </div>
+        <div id="right-panel">
+          <div id="editor-panel">
+            <div class="editor-hint">Select a species or creature from the left panel to begin.</div>
+          </div>
+          <div id="export-panel">
+            <div class="panel-btns">
+              <button id="export-btn">Export TS</button>
+            </div>
+            <textarea id="export-output" readonly placeholder="Exported cells appear here — copy/paste to source"></textarea>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script type="module" src="/main.ts"></script>
+</body>
+</html>

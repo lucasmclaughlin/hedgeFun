@@ -52,6 +52,8 @@ const MENU_CONTROLS = [
   ['Space',         'Plant selected species'],
   ['P',             'Prune plant at cursor'],
   ['H',             'Lay hedge (Winter only, Mature)'],
+  ['C',             'Coppice plant (Winter, Juv/Mature, if species allows)'],
+  ['O',             'Pollard plant (Winter, Mature, if species allows)'],
   ['Arrow keys',    'Pan camera'],
   ['Mouse drag',    'Pan camera'],
   ['Tab',           'Cycle speed (Pause/Slow/Normal/Fast)'],

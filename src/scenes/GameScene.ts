@@ -389,6 +389,16 @@ export class GameScene extends Phaser.Scene {
         this.tryLay();
         break;
 
+      // Coppice — cut to ground stool (species must support it, Winter only)
+      case 'c': case 'C':
+        this.tryCoppice();
+        break;
+
+      // Pollard — remove crown, regrow from trunk head (species must support it, Winter only)
+      case 'o': case 'O':
+        this.tryPollard();
+        break;
+
       // Export JSON
       case 'e': case 'E':
         this.exportSave();
@@ -495,6 +505,52 @@ export class GameScene extends Phaser.Scene {
       this.plantRenderer.renderPlants(this.growthSim.getPlants(), period.season);
       this.hudRenderer.showMessage('Hedge laid — will regrow denser and stronger');
     }
+  }
+
+  private tryCoppice(): void {
+    const col = this.asciiRenderer.getCursorCol();
+    const period = this.timeClock.getCurrentPeriod();
+    const result = this.growthSim.coppicePlant(col, period.season);
+    if (!result) {
+      this.hudRenderer.showMessage('Nothing to coppice here');
+      return;
+    }
+    const messages: Record<string, string> = {
+      'cannot-coppice': 'This species does not respond to coppicing',
+      'not-winter':     'Coppicing must be done in Winter (while dormant)',
+      'too-young':      'Plant must be Juvenile or Mature to coppice',
+    };
+    if (messages[result]) {
+      this.hudRenderer.showMessage(messages[result]);
+      return;
+    }
+    const plant = this.growthSim.getPlants().find(p => p.col === col);
+    const species = plant ? this.growthSim.getSpeciesFor(plant.speciesId) : null;
+    this.plantRenderer.renderPlants(this.growthSim.getPlants(), period.season);
+    this.hudRenderer.showMessage(species?.pruning.coppiceResult ?? 'Coppiced');
+  }
+
+  private tryPollard(): void {
+    const col = this.asciiRenderer.getCursorCol();
+    const period = this.timeClock.getCurrentPeriod();
+    const result = this.growthSim.pollardPlant(col, period.season);
+    if (!result) {
+      this.hudRenderer.showMessage('Nothing to pollard here');
+      return;
+    }
+    const messages: Record<string, string> = {
+      'cannot-pollard': 'This species does not suit pollarding',
+      'not-winter':     'Pollarding must be done in Winter (before bud-burst)',
+      'not-mature':     'Plant must be Mature to pollard',
+    };
+    if (messages[result]) {
+      this.hudRenderer.showMessage(messages[result]);
+      return;
+    }
+    const plant = this.growthSim.getPlants().find(p => p.col === col);
+    const species = plant ? this.growthSim.getSpeciesFor(plant.speciesId) : null;
+    this.plantRenderer.renderPlants(this.growthSim.getPlants(), period.season);
+    this.hudRenderer.showMessage(species?.pruning.pollardResult ?? 'Pollarded');
   }
 
   private restartGame(): void {

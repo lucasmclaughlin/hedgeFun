@@ -32,6 +32,8 @@ export class GrowthSimulator {
       deathTimer: 0,
       selfSeeded,
       isLaid: false,
+      isCoppiced: false,
+      isPollarded: false,
     });
   }
 
@@ -72,11 +74,14 @@ export class GrowthSimulator {
         continue;
       }
 
-      // Laid plants regrow vigorously even from winter cuts — no winter dormancy check
+      // Managed plants (laid/coppiced/pollarded) regrow vigorously — no winter dormancy check
       const isLaid = plant.isLaid ?? false;
+      const isCoppiced = plant.isCoppiced ?? false;
+      const isPollarded = plant.isPollarded ?? false;
+      const isManaged = isLaid || isCoppiced || isPollarded;
 
-      // Seeds don't grow in winter (except holly or laid plants)
-      if (plant.stage === GrowthStage.Seed && period.season === Season.Winter && species.id !== 'holly' && !isLaid) {
+      // Seeds don't grow in winter (except holly or managed plants)
+      if (plant.stage === GrowthStage.Seed && period.season === Season.Winter && species.id !== 'holly' && !isManaged) {
         continue;
       }
 
@@ -86,13 +91,23 @@ export class GrowthSimulator {
         modifier *= 1.5; // favorable season boost
       }
       if (period.season === Season.Winter && species.id !== 'holly') {
-        // Laid plants regrow from established roots — much less winter slowdown
-        modifier *= isLaid ? 0.9 : 0.5;
+        // Managed plants regrow from established roots — much less winter slowdown
+        modifier *= isManaged ? 0.9 : 0.5;
       }
 
       // Laid plants regrow 2× faster — the root system is already established
       if (isLaid) {
         modifier *= 2.0;
+      }
+
+      // Coppiced plants regrow vigorously from the stool
+      if (isCoppiced) {
+        modifier *= species.pruning?.coppiceRegrowth ?? 1.5;
+      }
+
+      // Pollarded plants regrow at a moderate bonus — trunk provides a head start
+      if (isPollarded) {
+        modifier *= 1.3;
       }
 
       // Soil quality modifier based on root depth
@@ -115,17 +130,20 @@ export class GrowthSimulator {
     if (!species) return;
 
     const isLaid = plant.isLaid ?? false;
+    const isCoppiced = plant.isCoppiced ?? false;
+    // Managed plants (laid or coppiced) share resilience bonuses — established root systems
+    const isManaged = isLaid || isCoppiced;
 
     let damage = 0;
 
     // Overcrowding: count plants within 3 columns
-    // Laid plants tolerate crowding — their dense base is a feature, not a problem
+    // Managed plants tolerate crowding — established root systems
     const neighbors = this.plants.filter(p =>
       p !== plant && !p.isDying && Math.abs(p.col - plant.col) <= 3
     ).length;
     if (neighbors >= 3) {
       const crowdingDamage = 0.05 * (neighbors - 2);
-      damage += isLaid ? crowdingDamage * 0.3 : crowdingDamage;
+      damage += isManaged ? crowdingDamage * 0.3 : crowdingDamage;
     }
 
     // Poor soil
@@ -133,31 +151,31 @@ export class GrowthSimulator {
     const soilQuality = this.soilMap.getColumnQuality(plant.col, rootDepth);
     if (soilQuality < 0.75) {
       const baseDrain = 0.02;
-      // Laid plants have deep, established roots — less sensitive to poor soil
+      // Managed plants have deep, established roots — less sensitive to poor soil
       const soilDamage = (plant.stage <= GrowthStage.Seedling) ? baseDrain * 2 : baseDrain;
-      damage += isLaid ? soilDamage * 0.5 : soilDamage;
+      damage += isManaged ? soilDamage * 0.5 : soilDamage;
     }
 
     // Winter stress (non-evergreen)
-    // Laid plants are cut at the ideal time — winter stress is greatly reduced
+    // Managed plants have reduced winter stress — established roots
     const isEvergreen = species.id === 'holly';
     if (period.season === Season.Winter && !isEvergreen) {
       if (plant.stage <= GrowthStage.Seedling) {
-        damage += isLaid ? 0.005 : 0.03;
+        damage += isManaged ? 0.005 : 0.03;
       } else if (plant.stage === GrowthStage.Juvenile) {
-        damage += isLaid ? 0.002 : 0.01;
+        damage += isManaged ? 0.002 : 0.01;
       }
     }
 
-    // Frost damage to young plants — laid plants are adapted to winter conditions
+    // Frost damage to young plants — managed plants are adapted to winter conditions
     if (weather === Weather.Frost && plant.stage <= GrowthStage.Seedling) {
-      damage += isLaid ? 0.004 : 0.02;
+      damage += isManaged ? 0.004 : 0.02;
     }
 
-    // Recovery in favorable seasons — laid plants recover more vigorously
+    // Recovery in favorable seasons — managed plants recover more vigorously
     let recovery = 0;
     if (period.season === Season.Spring || period.season === Season.Summer) {
-      recovery = isLaid ? 0.05 : 0.02;
+      recovery = isManaged ? 0.05 : 0.02;
     }
 
     plant.health = Math.max(0, Math.min(1, plant.health - damage + recovery));
@@ -208,11 +226,71 @@ export class GrowthSimulator {
 
     this.layCount++;
     plant.isLaid = true;
+    plant.isCoppiced = false;
+    plant.isPollarded = false;
     plant.stage = GrowthStage.Seedling;
     plant.ticksInStage = 0;
     plant.health = 1.0; // laying stimulates vigorous regrowth
 
     return 'laid';
+  }
+
+  /**
+   * Coppice the plant at the given column — cut to ground level.
+   * Requires Winter AND the plant must be Juvenile or Mature.
+   * The established root system drives vigorous multi-stemmed regrowth.
+   * Returns a result key, or null if no plant found.
+   */
+  coppicePlant(col: number, season: Season): string | null {
+    const idx = this.plants.findIndex(p => p.col === col && !p.isDying);
+    if (idx === -1) return null;
+
+    const plant = this.plants[idx];
+    const species = SPECIES[plant.speciesId];
+    if (!species) return null;
+
+    if (!species.pruning.coppiceable) return 'cannot-coppice';
+    if (season !== Season.Winter) return 'not-winter';
+    if (plant.stage === GrowthStage.Seed || plant.stage === GrowthStage.Seedling) return 'too-young';
+
+    this.pruneCount++;
+    plant.isCoppiced = true;
+    plant.isLaid = false;
+    plant.isPollarded = false;
+    plant.stage = GrowthStage.Seedling;
+    plant.ticksInStage = 0;
+    plant.health = 1.0; // established stool = full vigour on regrowth
+
+    return 'coppiced';
+  }
+
+  /**
+   * Pollard the plant at the given column — remove the crown, preserve the trunk.
+   * Requires Winter AND the plant must be Mature.
+   * New growth emerges from the pollard head at trunk height.
+   * Returns a result key, or null if no plant found.
+   */
+  pollardPlant(col: number, season: Season): string | null {
+    const idx = this.plants.findIndex(p => p.col === col && !p.isDying);
+    if (idx === -1) return null;
+
+    const plant = this.plants[idx];
+    const species = SPECIES[plant.speciesId];
+    if (!species) return null;
+
+    if (!species.pruning.pollardable) return 'cannot-pollard';
+    if (season !== Season.Winter) return 'not-winter';
+    if (plant.stage !== GrowthStage.Mature) return 'not-mature';
+
+    this.pruneCount++;
+    plant.isPollarded = true;
+    plant.isLaid = false;
+    plant.isCoppiced = false;
+    plant.stage = GrowthStage.Juvenile;
+    plant.ticksInStage = 0;
+    plant.health = 0.9;
+
+    return 'pollarded';
   }
 
   /**
@@ -247,6 +325,10 @@ export class GrowthSimulator {
     return this.plants;
   }
 
+  getSpeciesFor(speciesId: string) {
+    return SPECIES[speciesId] ?? null;
+  }
+
   getDeadPlantCount(): number {
     return this.deadPlantCount;
   }
@@ -268,14 +350,29 @@ export class GrowthSimulator {
     for (const plant of this.plants) {
       // Laid plants use wider custom visuals at every stage
       if (plant.isLaid ?? false) {
-        // Mature laid: 7-wide base (-3..+3), 5 rows tall above ground (-4..+2)
-        // Juvenile laid: 5-wide (-2..+2), 4 tall (-2..+2)
-        // Seedling laid: 5-wide (-2..+2), 3 tall (-1..+2)
         const halfW = plant.stage === GrowthStage.Mature ? 3 : 2;
         const topRow = plant.stage === GrowthStage.Mature ? -4 :
                        plant.stage === GrowthStage.Juvenile ? -2 : -1;
         if (Math.abs(plant.col - col) <= halfW &&
             row >= plant.row + topRow && row <= plant.row + 2) {
+          return plant;
+        }
+        continue;
+      }
+      // Coppiced plants (non-mature) use wider stool visuals
+      if ((plant.isCoppiced ?? false) && plant.stage !== GrowthStage.Mature) {
+        const halfW = plant.stage === GrowthStage.Juvenile ? 2 : 1;
+        const topRow = plant.stage === GrowthStage.Juvenile ? -2 : -1;
+        if (Math.abs(plant.col - col) <= halfW &&
+            row >= plant.row + topRow && row <= plant.row + 2) {
+          return plant;
+        }
+        continue;
+      }
+      // Pollarded plants (non-mature) use trunk + head visuals
+      if ((plant.isPollarded ?? false) && plant.stage !== GrowthStage.Mature) {
+        if (Math.abs(plant.col - col) <= 1 &&
+            row >= plant.row - 5 && row <= plant.row + 2) {
           return plant;
         }
         continue;
@@ -304,8 +401,13 @@ export class GrowthSimulator {
   // ── Save/Load ──
 
   loadState(plants: PlantState[], deadPlantCount: number, pruneCount = 0, layCount = 0): void {
-    // Ensure isLaid field exists on loaded plants (backward compat)
-    this.plants = plants.map(p => ({ ...p, isLaid: p.isLaid ?? false }));
+    // Ensure new fields exist on loaded plants (backward compat)
+    this.plants = plants.map(p => ({
+      ...p,
+      isLaid: p.isLaid ?? false,
+      isCoppiced: p.isCoppiced ?? false,
+      isPollarded: p.isPollarded ?? false,
+    }));
     this.deadPlantCount = deadPlantCount;
     this.pruneCount = pruneCount;
     this.layCount = layCount;

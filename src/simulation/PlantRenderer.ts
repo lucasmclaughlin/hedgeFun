@@ -85,6 +85,66 @@ const LAID_MATURE_CELLS: Array<[number, number, Glyph]> = [
   [ 0,  2, { char: '.', fg: '#4a2a0a' }],
 ];
 
+/**
+ * Visual cells for a freshly coppiced plant (Seedling stage).
+ * Shows the stool stump with first regrowth shoots.
+ */
+const COPPICE_SEEDLING_CELLS: Array<[number, number, Glyph]> = [
+  [-1,  0, { char: '=', fg: '#7a5a1a' }],
+  [ 0,  0, { char: 'W', fg: '#8a6a2a' }],  // 'W' = cut stool
+  [ 1,  0, { char: '=', fg: '#7a5a1a' }],
+  [-1, -1, { char: 'i', fg: '#5a9a2a' }],
+  [ 0, -1, { char: 'i', fg: '#6aaa3a' }],
+  [ 1, -1, { char: 'i', fg: '#5a9a2a' }],
+  [ 0,  1, { char: '|', fg: '#5a3a1a' }],
+  [ 0,  2, { char: '.', fg: '#4a2a0a' }],
+];
+
+/**
+ * Visual cells for a regrowing coppice stool (Juvenile stage).
+ * Dense multi-stem regrowth from the visible stool base.
+ */
+const COPPICE_JUVENILE_CELLS: Array<[number, number, Glyph]> = [
+  [-2, -2, { char: 'i', fg: '#5a9a2a' }],
+  [-1, -2, { char: 'i', fg: '#6aaa3a' }],
+  [ 0, -2, { char: 'I', fg: '#7aba4a' }],
+  [ 1, -2, { char: 'i', fg: '#6aaa3a' }],
+  [ 2, -2, { char: 'i', fg: '#5a9a2a' }],
+  [-1, -1, { char: '|', fg: '#5a8a2a' }],
+  [ 0, -1, { char: '|', fg: '#6a9a3a' }],
+  [ 1, -1, { char: '|', fg: '#5a8a2a' }],
+  [-1,  0, { char: '=', fg: '#7a5a1a' }],
+  [ 0,  0, { char: 'W', fg: '#7a6a3a' }],
+  [ 1,  0, { char: '=', fg: '#7a5a1a' }],
+  [ 0,  1, { char: '|', fg: '#5a3a1a' }],
+  [ 0,  2, { char: '.', fg: '#4a2a0a' }],
+];
+
+/**
+ * Visual cells for a pollarded plant (Juvenile stage after pollarding).
+ * Preserved trunk with a visible cut head and new regrowth shooting from it.
+ */
+const POLLARD_JUVENILE_CELLS: Array<[number, number, Glyph]> = [
+  // New regrowth above the pollard head
+  [-1, -5, { char: '(', fg: '#5a9a2a' }],
+  [ 0, -5, { char: '^', fg: '#7aba4a' }],
+  [ 1, -5, { char: ')', fg: '#5a9a2a' }],
+  [-1, -4, { char: '/', fg: '#5a9a2a' }],
+  [ 0, -4, { char: 'Y', fg: '#6aaa3a' }],
+  [ 1, -4, { char: '\\', fg: '#5a9a2a' }],
+  // Pollard head — the visible cut node
+  [-1, -3, { char: '-', fg: '#8a6a3a' }],
+  [ 0, -3, { char: 'O', fg: '#9a7a4a' }],
+  [ 1, -3, { char: '-', fg: '#8a6a3a' }],
+  // Preserved trunk below the head
+  [ 0, -2, { char: '|', fg: '#6a4a1a' }],
+  [ 0, -1, { char: '|', fg: '#6a4a1a' }],
+  [ 0,  0, { char: '|', fg: '#6a4a1a' }],
+  // Roots
+  [ 0,  1, { char: '|', fg: '#5a3a1a' }],
+  [ 0,  2, { char: '.', fg: '#4a2a0a' }],
+];
+
 /** Recolor root cells to white/bone/ecru shades for contrast underground */
 function withRootColor(colOff: number, rowOff: number, glyph: Glyph): Glyph {
   if (rowOff <= 0) return glyph; // only recolor underground cells
@@ -145,20 +205,37 @@ export class PlantRenderer {
       const species = SPECIES[plant.speciesId];
       if (!species) continue;
 
-      // Laid plants use special visuals at every growth stage
       const isLaid = plant.isLaid ?? false;
-      const useLaidVisual = isLaid;
-      const laidCells =
-        plant.stage === GrowthStage.Seedling ? LAID_SEEDLING_CELLS :
-        plant.stage === GrowthStage.Juvenile  ? LAID_JUVENILE_CELLS :
-                                                LAID_MATURE_CELLS;
+      const isCoppiced = plant.isCoppiced ?? false;
+      const isPollarded = plant.isPollarded ?? false;
+
+      // Select the appropriate visual cell array
+      let cellsToDraw: Array<[number, number, Glyph]>;
       const visual = species.visuals[plant.stage];
+
+      if (isLaid) {
+        cellsToDraw =
+          plant.stage === GrowthStage.Seedling ? LAID_SEEDLING_CELLS :
+          plant.stage === GrowthStage.Juvenile  ? LAID_JUVENILE_CELLS :
+                                                  LAID_MATURE_CELLS;
+      } else if (isCoppiced && plant.stage !== GrowthStage.Mature) {
+        // Coppice stool visuals until the plant regrows to Mature
+        cellsToDraw =
+          plant.stage === GrowthStage.Seedling ? COPPICE_SEEDLING_CELLS :
+                                                 COPPICE_JUVENILE_CELLS;
+      } else if (isPollarded && plant.stage !== GrowthStage.Mature) {
+        // Pollard trunk + head visual during regrowth
+        cellsToDraw = POLLARD_JUVENILE_CELLS;
+      } else {
+        cellsToDraw = visual.cells;
+      }
+
+      const useCustomVisual = isLaid
+        || (isCoppiced && plant.stage !== GrowthStage.Mature)
+        || (isPollarded && plant.stage !== GrowthStage.Mature);
 
       // Compute death fade progress (0 = just died, 1 = about to vanish)
       const fadeProgress = plant.isDying ? 1 - (plant.deathTimer / 3) : 0;
-
-      // Draw base cells (laid or normal)
-      const cellsToDraw = useLaidVisual ? laidCells : visual.cells;
       for (const [colOff, rowOff, glyph] of cellsToDraw) {
         const absCol = plant.col + colOff;
         const absRow = plant.row + rowOff;
@@ -176,8 +253,8 @@ export class PlantRenderer {
       }
 
       // Draw seasonal decoration cells on top (flowers, fruit, berries)
-      // Skip for dying plants and for laid seedlings/juveniles (no flowering while regrowing)
-      if (!plant.isDying && !useLaidVisual) {
+      // Skip for dying plants and for any custom-visual stage (no flowering while regrowing)
+      if (!plant.isDying && !useCustomVisual) {
         const seasonCells = visual.seasonalCells?.[season];
         if (seasonCells) {
           for (const [colOff, rowOff, glyph] of seasonCells) {

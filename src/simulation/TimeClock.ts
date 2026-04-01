@@ -90,6 +90,14 @@ export class TimeClock {
     return this.periodIndex;
   }
 
+  // ── Realtime mode ──
+
+  /** Override period index and progress when driven by real-world time. */
+  setRealtimePeriod(index: number, progress: number): void {
+    this.periodIndex = index;
+    this.tickAccumulator = progress * this.tickDurationMs;
+  }
+
   // ── Save/Load ──
 
   getState(): { periodIndex: number; tickAccumulator: number } {

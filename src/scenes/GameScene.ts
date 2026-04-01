@@ -13,6 +13,7 @@ import { CreatureRenderer } from '@/simulation/CreatureRenderer';
 import { HudRenderer } from '@/ui/HudRenderer';
 import { BiodiversityTracker } from '@/simulation/BiodiversityTracker';
 import { SaveManager } from '@/simulation/SaveManager';
+import { RealtimeModeManager } from '@/simulation/RealtimeModeManager';
 import { SPECIES_LIST } from '@/data/species';
 import { saveHighScore } from '@/scenes/SplashScene';
 import type { PlantState, CreatureState, SaveData } from '@/types';
@@ -80,6 +81,10 @@ export class GameScene extends Phaser.Scene {
 
   /** Screenshot mode — hides HUD and zooms to full hedge width */
   private screenshotMode = false;
+
+  /** Realtime mode — syncs season/weather to real-world date and location */
+  private realtimeMode = false;
+  private realtimeModeManager: RealtimeModeManager | null = null;
 
   constructor() {
     super({ key: 'GameScene' });
@@ -235,13 +240,27 @@ export class GameScene extends Phaser.Scene {
 
     const isPaused = this.timeClock.getIsPaused();
 
-    // Advance time (only when not paused)
-    if (this.timeClock.tick(delta)) {
+    // Advance time
+    let periodAdvanced = false;
+
+    if (this.realtimeMode && this.realtimeModeManager) {
+      // Realtime mode: sync period and weather to real-world clock
+      const { snapshot, periodAdvanced: rtAdvanced } = this.realtimeModeManager.tick();
+      this.timeClock.setRealtimePeriod(snapshot.periodIndex, snapshot.periodProgress);
+      if (rtAdvanced) {
+        periodAdvanced = true;
+        this.weatherEngine.setWeather(snapshot.weather);
+      }
+    } else if (this.timeClock.tick(delta)) {
+      periodAdvanced = true;
+    }
+
+    if (periodAdvanced) {
       const period = this.timeClock.getCurrentPeriod();
       const moon = this.timeClock.getMoonPhase();
       this.energyManager.onPeriodAdvance(period, moon);
       this.growthSim.onPeriodAdvance(period, this.weatherEngine.getCurrentWeather());
-      this.weatherEngine.onPeriodAdvance(period);
+      if (!this.realtimeMode) this.weatherEngine.onPeriodAdvance(period);
       this.plantRenderer.renderPlants(this.growthSim.getPlants(), period.season);
       this.creatureSim.onPeriodAdvance(period, this.growthSim.getPlants());
       this.asciiRenderer.setEnvironment(period.season, this.weatherEngine.getCurrentWeather());
@@ -260,16 +279,18 @@ export class GameScene extends Phaser.Scene {
         this.hudRenderer.showMilestoneToasts(newMilestones);
       }
 
-      // Auto-save every year
-      const totalPeriods = this.timeClock.getTotalPeriods();
-      if (totalPeriods > 0 && totalPeriods - this.lastSavePeriod >= AUTO_SAVE_INTERVAL) {
-        this.lastSavePeriod = totalPeriods;
-        this.saveManager.autoSave(this.buildSaveData());
+      // Auto-save every year (not in realtime mode — period resets would trigger constantly)
+      if (!this.realtimeMode) {
+        const totalPeriods = this.timeClock.getTotalPeriods();
+        if (totalPeriods > 0 && totalPeriods - this.lastSavePeriod >= AUTO_SAVE_INTERVAL) {
+          this.lastSavePeriod = totalPeriods;
+          this.saveManager.autoSave(this.buildSaveData());
+        }
       }
     }
 
-    // Animate weather and creatures (paused = frozen in time)
-    if (!isPaused) {
+    // Animate weather and creatures (paused = frozen in time; realtime is always live)
+    if (!isPaused || this.realtimeMode) {
       this.weatherEngine.updateSkyOverlays(delta);
       this.creatureSim.updateCreatures(delta);
     }
@@ -297,7 +318,7 @@ export class GameScene extends Phaser.Scene {
       this.mouseScreenX,
       this.mouseScreenY,
       this.weatherEngine.getWeatherName(),
-      this.timeClock.getSpeedLabel(),
+      this.realtimeMode ? 'REALTIME' : this.timeClock.getSpeedLabel(),
       this.creatureSim.getUniqueSpeciesCount(),
       this.creatureSim.getTotalCount(),
       this.biodiversityTracker.getScore(),
@@ -398,6 +419,15 @@ export class GameScene extends Phaser.Scene {
           this.exitScreenshotMode();
         } else {
           this.enterScreenshotMode();
+        }
+        break;
+
+      // Realtime mode — sync season/weather to real-world date and location
+      case 'r': case 'R':
+        if (this.realtimeMode) {
+          this.exitRealtimeMode();
+        } else {
+          void this.enterRealtimeMode();
         }
         break;
     }
@@ -623,6 +653,42 @@ export class GameScene extends Phaser.Scene {
 
     // Restore previous view mode
     this.applyViewMode();
+  }
+
+  // ── Realtime mode ──
+
+  private async enterRealtimeMode(): Promise<void> {
+    this.hudRenderer.showMessage('Locating... requesting permission');
+
+    if (!this.realtimeModeManager) {
+      this.realtimeModeManager = new RealtimeModeManager();
+    }
+
+    try {
+      const snapshot = await this.realtimeModeManager.enter();
+      this.realtimeMode = true;
+
+      // Sync clock and weather immediately
+      this.timeClock.setRealtimePeriod(snapshot.periodIndex, snapshot.periodProgress);
+      this.weatherEngine.setWeather(snapshot.weather);
+
+      // Sync environment visuals
+      const period = this.timeClock.getCurrentPeriod();
+      this.asciiRenderer.setEnvironment(period.season, snapshot.weather);
+      this.plantRenderer.renderPlants(this.growthSim.getPlants(), period.season);
+
+      this.hudRenderer.showMessage(
+        `Realtime mode  ${this.timeClock.getSubSeasonName()} ${this.timeClock.getSeasonName()}`
+      );
+    } catch {
+      this.realtimeMode = false;
+      this.hudRenderer.showMessage('Realtime mode unavailable — check location permissions');
+    }
+  }
+
+  private exitRealtimeMode(): void {
+    this.realtimeMode = false;
+    this.hudRenderer.showMessage('Realtime mode off');
   }
 
   /** Add ground-level decoration: grass tufts, soil texture, rocks */

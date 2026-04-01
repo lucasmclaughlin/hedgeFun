@@ -416,9 +416,14 @@ export class HudRenderer {
     this.scoreText.setText(`Score: ${biodiversityScore}  (${milestonesAchieved}/${milestonesTotal} milestones) [M]`);
 
     // Speed indicator
-    const isPaused = speedLabel.includes('Paused');
-    this.speedText.setText(`Speed: ${speedLabel}  [Tab]`);
-    this.speedText.setColor(isPaused ? '#ffaa44' : '#888888');
+    if (speedLabel === 'REALTIME') {
+      this.speedText.setText('Realtime mode  [R to exit]');
+      this.speedText.setColor('#44bb88');
+    } else {
+      const isPaused = speedLabel.includes('Paused');
+      this.speedText.setText(`Speed: ${speedLabel}  [Tab]`);
+      this.speedText.setColor(isPaused ? '#ffaa44' : '#888888');
+    }
 
     // Species panel — individual colored lines
     for (let i = 0; i < this.speciesLines.length; i++) {

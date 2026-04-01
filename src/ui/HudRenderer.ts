@@ -417,7 +417,7 @@ export class HudRenderer {
 
     // Speed indicator
     if (speedLabel === 'REALTIME') {
-      this.speedText.setText('Realtime mode  [R to exit]');
+      this.speedText.setText('Realtime mode  [T to exit]');
       this.speedText.setColor('#44bb88');
     } else {
       const isPaused = speedLabel.includes('Paused');

@@ -423,7 +423,7 @@ export class GameScene extends Phaser.Scene {
         break;
 
       // Realtime mode — sync season/weather to real-world date and location
-      case 'r': case 'R':
+      case 't': case 'T':
         if (this.realtimeMode) {
           this.exitRealtimeMode();
         } else {

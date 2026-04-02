@@ -144,16 +144,8 @@ export class WeatherEngine {
     this.renderer.setOverlay(col, row, glyph, OverlayLayer.Weather);
   }
 
-  private renderClearSky(cols: number): void {
-    // Sparse twinkling stars
-    for (let col = 0; col < cols; col++) {
-      for (let row = this.skyStartRow; row <= this.skyEndRow; row++) {
-        if (Math.random() < 0.015) {
-          const g = STAR_GLYPHS[Math.floor(Math.random() * STAR_GLYPHS.length)];
-          this.setOverlay(col, row, g);
-        }
-      }
-    }
+  private renderClearSky(_cols: number): void {
+    // Clear sky rendering is handled by StarMap (Phase 8.1)
   }
 
   private renderOvercast(cols: number): void {

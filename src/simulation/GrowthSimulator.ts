@@ -1,6 +1,7 @@
 import { Season, GrowthStage, Weather, type TimePeriod, type PlantState } from '@/types';
 import { SPECIES } from '@/data/species';
 import { SoilMap } from './SoilMap';
+import { getCompanionModifier } from './companionPlanting';
 
 /** Max plants before self-seeding stops */
 const MAX_PLANTS = 40;
@@ -114,6 +115,9 @@ export class GrowthSimulator {
       const rootDepth = this.getMaxRootDepth(species.visuals[plant.stage]);
       const soilMod = this.soilMap.getColumnQuality(plant.col, rootDepth);
       modifier *= soilMod;
+
+      // Companion planting modifier (synergy boosts / competition penalties)
+      modifier *= getCompanionModifier(plant, this.plants);
 
       plant.ticksInStage += modifier;
 

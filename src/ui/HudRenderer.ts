@@ -3,6 +3,7 @@ import { Season, GrowthStage, CreatureActivity, type TimePeriod, type MoonPhase,
 import { SPECIES } from '@/data/species';
 import { CREATURES } from '@/data/creatures';
 import { BiodiversityTracker } from '@/simulation/BiodiversityTracker';
+import type { ActiveRelationship } from '@/simulation/companionPlanting';
 
 const SEASON_COLORS: Record<Season, string> = {
   [Season.Spring]: '#7aba4a',
@@ -104,6 +105,11 @@ export class HudRenderer {
   private onRestartCallback: (() => void) | null = null;
 
   private messageTimer = 0;
+  private companionRelationships: ActiveRelationship[] = [];
+
+  setCompanionRelationships(relationships: ActiveRelationship[]): void {
+    this.companionRelationships = relationships;
+  }
 
   constructor(scene: Phaser.Scene) {
     this.seasonText = scene.add.text(8, 8, '', HUD_STYLE)
@@ -544,6 +550,13 @@ export class HudRenderer {
           '',
           `Plant in: ${species.plantableSeasons.map(s => ['Spring', 'Summer', 'Autumn', 'Winter'][s]).join(', ')}`,
         ];
+        if (this.companionRelationships.length > 0) {
+          infoLines.push('');
+          for (const rel of this.companionRelationships) {
+            const icon = rel.type === 'synergy' ? '\u2665' : '\u00D7';
+            infoLines.push(`${icon} ${rel.label}`);
+          }
+        }
         this.infoPanel.setText(infoLines.join('\n'));
         this.infoPanel.setAlpha(1);
       }

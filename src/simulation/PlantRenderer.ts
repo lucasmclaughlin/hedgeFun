@@ -1,6 +1,7 @@
 import { GRID_CONFIG, GrowthStage, OverlayLayer, type PlantState, type Season, type Glyph } from '@/types';
 import { SPECIES } from '@/data/species';
 import { AsciiRenderer } from '@/rendering/AsciiRenderer';
+import { renderCompanionIndicators } from './companionPlanting';
 
 /**
  * Visual cells for a freshly-laid hedge (Seedling stage after laying).
@@ -271,5 +272,9 @@ export class PlantRenderer {
         }
       }
     }
+
+    // Companion planting indicators — rendered between companion pairs
+    const groundRow = plants.find(p => !p.isDying)?.row ?? 20;
+    renderCompanionIndicators(plants, groundRow, this.renderer);
   }
 }

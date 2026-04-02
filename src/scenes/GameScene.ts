@@ -14,6 +14,8 @@ import { HudRenderer } from '@/ui/HudRenderer';
 import { BiodiversityTracker } from '@/simulation/BiodiversityTracker';
 import { SaveManager } from '@/simulation/SaveManager';
 import { RealtimeModeManager } from '@/simulation/RealtimeModeManager';
+import { StarMap } from '@/simulation/StarMap';
+import { getCompanionRelationships } from '@/simulation/companionPlanting';
 import { SPECIES_LIST } from '@/data/species';
 import { saveHighScore } from '@/scenes/SplashScene';
 import type { PlantState, CreatureState, SaveData } from '@/types';
@@ -85,6 +87,10 @@ export class GameScene extends Phaser.Scene {
   /** Realtime mode — syncs season/weather to real-world date and location */
   private realtimeMode = false;
   private realtimeModeManager: RealtimeModeManager | null = null;
+
+  // Star map
+  private starMap!: StarMap;
+  private starSeed = 0;
 
   constructor() {
     super({ key: 'GameScene' });
@@ -180,6 +186,8 @@ export class GameScene extends Phaser.Scene {
     this.growthSim = new GrowthSimulator(soilMap);
     this.plantRenderer = new PlantRenderer(this.asciiRenderer);
     this.weatherEngine = new WeatherEngine(this.asciiRenderer);
+    this.starSeed = (Date.now() ^ Math.floor(Math.random() * 0x100000000)) | 0;
+    this.starMap = new StarMap(this.asciiRenderer, this.starSeed);
     this.habitatScorer = new HabitatScorer();
     this.creatureSim = new CreatureSimulator(this.habitatScorer);
     this.creatureRenderer = new CreatureRenderer(this.asciiRenderer);
@@ -250,6 +258,7 @@ export class GameScene extends Phaser.Scene {
       if (rtAdvanced) {
         periodAdvanced = true;
         this.weatherEngine.setWeather(snapshot.weather);
+        this.starMap.setWeather(snapshot.weather);
       }
     } else if (this.timeClock.tick(delta)) {
       periodAdvanced = true;
@@ -261,6 +270,7 @@ export class GameScene extends Phaser.Scene {
       this.energyManager.onPeriodAdvance(period, moon);
       this.growthSim.onPeriodAdvance(period, this.weatherEngine.getCurrentWeather());
       if (!this.realtimeMode) this.weatherEngine.onPeriodAdvance(period);
+      this.starMap.setWeather(this.weatherEngine.getCurrentWeather());
       this.plantRenderer.renderPlants(this.growthSim.getPlants(), period.season);
       this.creatureSim.onPeriodAdvance(period, this.growthSim.getPlants());
       this.asciiRenderer.setEnvironment(period.season, this.weatherEngine.getCurrentWeather());
@@ -292,9 +302,19 @@ export class GameScene extends Phaser.Scene {
     // Animate weather and creatures (paused = frozen in time; realtime is always live)
     if (!isPaused || this.realtimeMode) {
       this.weatherEngine.updateSkyOverlays(delta);
+      this.starMap.update(delta, this.timeClock.getPeriodProgress());
       this.creatureSim.updateCreatures(delta);
     }
     this.creatureRenderer.renderCreatures(this.creatureSim.getCreatures());
+
+    // Update companion relationships for hovered plant
+    if (this.hoveredPlant) {
+      this.hudRenderer.setCompanionRelationships(
+        getCompanionRelationships(this.hoveredPlant, this.growthSim.getPlants()),
+      );
+    } else {
+      this.hudRenderer.setCompanionRelationships([]);
+    }
 
     // Update HUD every frame
     const period = this.timeClock.getCurrentPeriod();
@@ -629,6 +649,7 @@ export class GameScene extends Phaser.Scene {
       currentWeather: this.weatherEngine.getCurrentWeather(),
       selectedSpeciesIndex: this.selectedSpeciesIndex,
       viewMode: this.viewMode,
+      starSeed: this.starSeed,
     };
   }
 
@@ -640,6 +661,11 @@ export class GameScene extends Phaser.Scene {
     this.creatureSim.loadState(save.creatures, save.creatureSpawnCounts, save.creatureNextId);
     this.biodiversityTracker.loadState(save.achievedMilestoneIds, save.creaturePeriods);
     this.weatherEngine.setWeather(save.currentWeather);
+    if (save.starSeed !== undefined) {
+      this.starSeed = save.starSeed;
+      this.starMap.reseed(this.starSeed);
+    }
+    this.starMap.setWeather(save.currentWeather);
     this.selectedSpeciesIndex = save.selectedSpeciesIndex ?? 0;
     this.viewMode = save.viewMode ?? ViewMode.Hedge;
 

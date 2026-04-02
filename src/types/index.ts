@@ -8,6 +8,7 @@ export interface Glyph {
 /** Overlay draw-order layers — higher values draw on top */
 export enum OverlayLayer {
   Terrain = 0,
+  Stars = 5,
   Plant = 10,
   Creature = 20,
   Weather = 30,
@@ -408,4 +409,5 @@ export interface SaveData {
   currentWeather: Weather;
   selectedSpeciesIndex: number;
   viewMode: ViewMode;
+  starSeed?: number;
 }

@@ -250,6 +250,7 @@ export class GameScene extends Phaser.Scene {
 
     // Add decorative elements after systems init
     this.addTerrainDecoration();
+    this.addBurrows(this.terrainMap.getGroundRow(Math.floor(GRID_CONFIG.cols / 2)), GRID_CONFIG.rows - 1);
 
     // Check for save data passed via init
     const initData = this.scene.settings.data as { loadSave?: SaveData } | undefined;
@@ -961,6 +962,132 @@ export class GameScene extends Phaser.Scene {
           const ch = Math.abs(t) === 0 ? '=' : '-';
           const fg = Math.abs(t) === 0 ? '#8a5a2a' : '#6a4020';
           this.asciiRenderer.setOverlay(col, row, { char: ch, fg, bg: '#1e1208' });
+        }
+      }
+    }
+  }
+
+  /** Place animal burrow entrances, tunnels, and chambers underground */
+  private addBurrows(ugStart: number, ugEnd: number): void {
+    const cols = GRID_CONFIG.cols;
+
+    // Burrow color palette — earthy tones slightly lighter than surrounding soil
+    const tunnelFg = '#5a4a30';
+    const tunnelBg = '#100e08';
+    const chamberFg = '#6a5a3a';
+    const chamberBg = '#0e0c06';
+    const entranceFg = '#7a6a4a';
+    const rootFg = '#4a3a20';
+
+    // Tunnel characters
+    const hTunnel = ['-', '=', '-', '~'];
+    const vTunnel = ['|', ':', '|', '!'];
+    const junctions = ['+', '*', 'o'];
+    const chamberChars = ['.', ' ', ',', ' ', '.'];
+    const entranceChars = ['O', 'U', 'n'];
+
+    // Generate 6-10 burrow systems spread across the width
+    const burrowCount = 6 + Math.floor(this.terrainMap.decorHash(42, 73) * 5);
+    const spacing = Math.floor(cols / (burrowCount + 1));
+
+    for (let i = 0; i < burrowCount; i++) {
+      // Deterministic position for each burrow system
+      const baseCol = spacing * (i + 1) + Math.floor(this.terrainMap.decorHash(i * 17, 31) * spacing * 0.4) - Math.floor(spacing * 0.2);
+      if (baseCol < 3 || baseCol >= cols - 3) continue;
+
+      // Entrance at ground surface (row ugStart = 21)
+      const entranceChar = entranceChars[Math.floor(this.terrainMap.decorHash(baseCol, 0) * entranceChars.length)];
+      this.asciiRenderer.setOverlay(baseCol, ugStart, { char: entranceChar, fg: entranceFg, bg: tunnelBg });
+      // Soil disturbed around entrance
+      if (baseCol > 0) {
+        this.asciiRenderer.setOverlay(baseCol - 1, ugStart, { char: '.', fg: '#5a4a2a' });
+      }
+      if (baseCol < cols - 1) {
+        this.asciiRenderer.setOverlay(baseCol + 1, ugStart, { char: '.', fg: '#5a4a2a' });
+      }
+
+      // Main shaft going down from entrance — slight wander
+      let curCol = baseCol;
+      const shaftDepth = 3 + Math.floor(this.terrainMap.decorHash(baseCol, 100) * 6); // 3-8 rows deep
+      const maxRow = Math.min(ugStart + shaftDepth, ugEnd - 2);
+
+      for (let row = ugStart + 1; row <= maxRow; row++) {
+        // Slight horizontal wander
+        const drift = this.terrainMap.decorHash(curCol + row * 3, row * 7);
+        if (drift < 0.2 && curCol > 2) curCol--;
+        else if (drift > 0.8 && curCol < cols - 3) curCol++;
+
+        const ch = vTunnel[Math.floor(this.terrainMap.decorHash(curCol, row) * vTunnel.length)];
+        this.asciiRenderer.setOverlay(curCol, row, { char: ch, fg: tunnelFg, bg: tunnelBg });
+      }
+
+      // Horizontal tunnels branching off the shaft
+      const branchCount = 1 + Math.floor(this.terrainMap.decorHash(baseCol + 5, 200) * 3); // 1-3 branches
+      for (let b = 0; b < branchCount; b++) {
+        const branchRow = ugStart + 2 + Math.floor(this.terrainMap.decorHash(baseCol + b * 11, 300 + b) * (shaftDepth - 1));
+        if (branchRow > maxRow || branchRow > ugEnd - 1) continue;
+
+        // Junction mark
+        const jChar = junctions[Math.floor(this.terrainMap.decorHash(curCol, branchRow + b * 100) * junctions.length)];
+        const jCol = curCol + Math.floor(this.terrainMap.decorHash(baseCol, branchRow) * 2) - 1;
+        if (jCol >= 0 && jCol < cols) {
+          this.asciiRenderer.setOverlay(jCol, branchRow, { char: jChar, fg: chamberFg, bg: tunnelBg });
+        }
+
+        // Branch direction: left or right
+        const goRight = this.terrainMap.decorHash(baseCol + b, branchRow) > 0.5;
+        const branchLen = 4 + Math.floor(this.terrainMap.decorHash(baseCol + b * 7, 400 + b) * 10); // 4-13 cells
+        const startCol = goRight ? jCol + 1 : jCol - 1;
+        const dir = goRight ? 1 : -1;
+
+        let tc = startCol;
+        for (let t = 0; t < branchLen; t++) {
+          if (tc < 1 || tc >= cols - 1) break;
+
+          // Tunnels can wander vertically a little
+          let tr = branchRow;
+          const vDrift = this.terrainMap.decorHash(tc * 3 + t, branchRow * 5);
+          if (vDrift < 0.15 && tr > ugStart + 1) tr--;
+          else if (vDrift > 0.85 && tr < ugEnd) tr++;
+
+          const ch = hTunnel[Math.floor(this.terrainMap.decorHash(tc, tr + t * 10) * hTunnel.length)];
+          this.asciiRenderer.setOverlay(tc, tr, { char: ch, fg: tunnelFg, bg: tunnelBg });
+
+          // Occasional root dangling into tunnel
+          if (tr > ugStart + 1 && this.terrainMap.decorHash(tc + 99, tr) < 0.08) {
+            this.asciiRenderer.setOverlay(tc, tr - 1, { char: '\\', fg: rootFg });
+          }
+
+          tc += dir;
+        }
+
+        // Chamber at the end of each branch — a small widened area
+        if (tc >= 2 && tc < cols - 2 && branchRow >= ugStart + 1 && branchRow < ugEnd - 1) {
+          // 3x2 or 3x3 little chamber
+          const chamberH = 2 + Math.floor(this.terrainMap.decorHash(tc, branchRow + 500) * 2); // 2-3 rows
+          for (let cr = 0; cr < chamberH; cr++) {
+            for (let cc = -1; cc <= 1; cc++) {
+              const cCol = tc + cc;
+              const cRow = branchRow + cr;
+              if (cCol < 0 || cCol >= cols || cRow < ugStart || cRow > ugEnd) continue;
+              const ch = chamberChars[Math.floor(this.terrainMap.decorHash(cCol + cr * 3, cRow * 7) * chamberChars.length)];
+              this.asciiRenderer.setOverlay(cCol, cRow, { char: ch, fg: chamberFg, bg: chamberBg });
+            }
+          }
+          // Nest material or food cache decoration in some chambers
+          const chamberType = this.terrainMap.decorHash(tc + 77, branchRow + 77);
+          if (chamberType < 0.4) {
+            // Nest — soft materials
+            this.asciiRenderer.setOverlay(tc, branchRow, { char: '@', fg: '#6a5a40', bg: chamberBg });
+            this.asciiRenderer.setOverlay(tc, branchRow + 1, { char: '~', fg: '#5a4a30', bg: chamberBg });
+          } else if (chamberType < 0.7) {
+            // Food cache — seeds and nuts
+            this.asciiRenderer.setOverlay(tc, branchRow, { char: '"', fg: '#7a6a3a', bg: chamberBg });
+            if (branchRow + 1 <= ugEnd) {
+              this.asciiRenderer.setOverlay(tc, branchRow + 1, { char: 'o', fg: '#6a5a2a', bg: chamberBg });
+            }
+          }
+          // else: empty chamber
         }
       }
     }

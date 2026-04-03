@@ -231,7 +231,7 @@ export class PlantRenderer {
         cellsToDraw = visual.cells;
       }
 
-      const useCustomVisual = isLaid
+      const useCustomVisual = (isLaid && plant.stage !== GrowthStage.Mature)
         || (isCoppiced && plant.stage !== GrowthStage.Mature)
         || (isPollarded && plant.stage !== GrowthStage.Mature);
 
@@ -258,9 +258,17 @@ export class PlantRenderer {
       if (!plant.isDying && !useCustomVisual) {
         const seasonCells = visual.seasonalCells?.[season];
         if (seasonCells) {
+          // Laid mature plants use LAID_MATURE_CELLS (crown top at -4) instead of the taller
+          // upright visual, so shift seasonal cells down so their topmost cell aligns with
+          // the laid crown top.
+          const LAID_MATURE_TOP = -4;
+          const laidRowAdjust = (isLaid && plant.stage === GrowthStage.Mature)
+            ? LAID_MATURE_TOP - Math.min(...seasonCells.map(([, r]) => r))
+            : 0;
+
           for (const [colOff, rowOff, glyph] of seasonCells) {
             const absCol = plant.col + colOff;
-            const absRow = plant.row + rowOff;
+            const absRow = plant.row + rowOff + laidRowAdjust;
 
             if (absCol < 0 || absCol >= GRID_CONFIG.cols) continue;
             if (absRow < 0 || absRow >= GRID_CONFIG.rows) continue;

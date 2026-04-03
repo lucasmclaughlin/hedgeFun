@@ -1,9 +1,37 @@
 import Phaser from 'phaser';
-import { Season, GrowthStage, CreatureActivity, type TimePeriod, type MoonPhase, type SpeciesDef, type PlantState, type CreatureState, type MilestoneDef } from '@/types';
+import { Season, GrowthStage, SoilBiome, SoilLayer, CreatureActivity, type TimePeriod, type MoonPhase, type SpeciesDef, type PlantState, type CreatureState, type MilestoneDef } from '@/types';
 import { SPECIES } from '@/data/species';
 import { CREATURES } from '@/data/creatures';
 import { BiodiversityTracker } from '@/simulation/BiodiversityTracker';
 import type { ActiveRelationship } from '@/simulation/companionPlanting';
+
+export interface TerrainHoverInfo {
+  col: number;
+  row: number;
+  depth: number;
+  soilLayer: SoilLayer;
+  biome: SoilBiome;
+  fertility: number;
+  rockDensity: number;
+  inBoulder: boolean;
+  inClayLens: boolean;
+  nearAquifer: boolean;
+  isSpring: boolean;
+}
+
+const BIOME_NAMES: Record<SoilBiome, string> = {
+  [SoilBiome.Loam]:  'Loam',
+  [SoilBiome.Clay]:  'Clay',
+  [SoilBiome.Chalk]: 'Chalk',
+  [SoilBiome.Peat]:  'Peat',
+  [SoilBiome.Sandy]: 'Sandy',
+};
+
+const SOIL_LAYER_NAMES: Record<SoilLayer, string> = {
+  [SoilLayer.Topsoil]: 'Topsoil',
+  [SoilLayer.Subsoil]: 'Subsoil',
+  [SoilLayer.Bedrock]: 'Bedrock',
+};
 
 const SEASON_COLORS: Record<Season, string> = {
   [Season.Spring]: '#7aba4a',
@@ -106,9 +134,14 @@ export class HudRenderer {
 
   private messageTimer = 0;
   private companionRelationships: ActiveRelationship[] = [];
+  private terrainHoverInfo: TerrainHoverInfo | null = null;
 
   setCompanionRelationships(relationships: ActiveRelationship[]): void {
     this.companionRelationships = relationships;
+  }
+
+  setHoveredTerrainInfo(info: TerrainHoverInfo | null): void {
+    this.terrainHoverInfo = info;
   }
 
   constructor(scene: Phaser.Scene) {
@@ -560,6 +593,30 @@ export class HudRenderer {
         this.infoPanel.setText(infoLines.join('\n'));
         this.infoPanel.setAlpha(1);
       }
+    } else if (this.terrainHoverInfo) {
+      const t = this.terrainHoverInfo;
+      const biomeName = BIOME_NAMES[t.biome];
+      const layerName = SOIL_LAYER_NAMES[t.soilLayer];
+      const fertilityBar = Math.round(t.fertility * 10);
+      const rockBar = Math.round(t.rockDensity * 10);
+      const infoLines = [
+        `-- ${layerName} --`,
+        `Biome: ${biomeName}`,
+        `Depth: ${t.depth} rows`,
+        '',
+        `Fertility:  ${'|'.repeat(fertilityBar)}${'.'.repeat(10 - fertilityBar)} ${Math.round(t.fertility * 100)}%`,
+        `Rock:       ${'|'.repeat(rockBar)}${'.'.repeat(10 - rockBar)} ${Math.round(t.rockDensity * 100)}%`,
+      ];
+      const features: string[] = [];
+      if (t.inBoulder)   features.push('Boulder mass');
+      if (t.inClayLens)  features.push('Clay lens');
+      if (t.nearAquifer) features.push('Near aquifer');
+      if (t.isSpring)    features.push('Spring column');
+      if (features.length > 0) {
+        infoLines.push('', ...features);
+      }
+      this.infoPanel.setText(infoLines.join('\n'));
+      this.infoPanel.setAlpha(1);
     } else if (selectedSpecies) {
       const activity = selectedSpecies.seasonalActivity[period.season];
       const canPlant = selectedSpecies.plantableSeasons.includes(period.season);

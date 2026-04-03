@@ -179,6 +179,40 @@ export const CREATURES: Record<string, CreatureDef> = {
     },
   },
 
+  rabbit: {
+    id: 'rabbit',
+    name: 'Rabbit',
+    latin: 'Oryctolagus cuniculus',
+    description: 'Gregarious grazer that digs extensive warrens under hedgerows. Most active at dawn and dusk.',
+    diet: 'Grass, clover, wildflowers, bark, young shoots',
+    size: '35-45 cm body, 1.2-2 kg',
+    nesting: 'Excavates communal warrens with multiple entrances and nesting chambers lined with fur',
+    funFact: 'Can sprint at 35 mph and their back legs are so powerful they can leap 3 metres in one bound.',
+    idleActivities: [CreatureActivity.Resting, CreatureActivity.Grooming, CreatureActivity.Foraging],
+    movingActivities: [CreatureActivity.Foraging, CreatureActivity.Patrolling, CreatureActivity.Burrowing],
+    layer: Layer.Ground,
+    rowRange: [20, 20],
+    movement: MovementPattern.Hop,
+    homeRange: 10,
+    speed: 1.5,
+    rarity: 5,
+    winterBehavior: WinterBehavior.Active,
+    habitat: { minPlants: 3, minMaturePlants: 1, minSpeciesDiversity: 2, attractedBySpecies: ['hawthorn', 'blackthorn', 'hazel'] },
+    frames: {
+      [CreatureBehavior.Idle]: [
+        { cells: [[-1, 0, { char: '(', fg: '#9a8060' }], [0, 0, { char: ')', fg: '#aa9070' }], [0, -1, { char: '"', fg: '#aa9070' }]] },
+        { cells: [[-1, 0, { char: '(', fg: '#8a7050' }], [0, 0, { char: ')', fg: '#9a8060' }], [0, -1, { char: '"', fg: '#9a8060' }]] },
+      ],
+      [CreatureBehavior.Moving]: [
+        { cells: [[-1, 0, { char: '(', fg: '#9a8060' }], [0, 0, { char: '>', fg: '#aa9070' }], [0, -1, { char: '"', fg: '#aa9070' }]] },
+        { cells: [[-1, 0, { char: '-', fg: '#8a7050' }], [0, 0, { char: '>', fg: '#aa9070' }], [0, -1, { char: '/', fg: '#9a8060' }]] },
+      ],
+      [CreatureBehavior.Sleeping]: [
+        { cells: [[0, 0, { char: 'o', fg: '#7a6040' }]] },
+      ],
+    },
+  },
+
   // ── Shrub layer ──────────────────────────────
 
   wren: {
@@ -699,6 +733,424 @@ export const CREATURES: Record<string, CreatureDef> = {
       ],
       [CreatureBehavior.Sleeping]: [
         { cells: [[0, 0, { char: 'U', fg: '#aaa090' }]] },
+      ],
+    },
+  },
+
+  // ── Balanced batch: insects, birds, mammals, amphibians ──────────────────
+
+  // ── Insects ──────────────────────────────
+
+  bumblebee: {
+    id: 'bumblebee',
+    name: 'Bumblebee',
+    latin: 'Bombus terrestris',
+    description: 'Fuzzy pollinator that buzzes between hedge flowers. Nests in old mouse holes underground.',
+    diet: 'Nectar and pollen from wildflowers, hedge blossoms',
+    size: '1.5-2.5 cm, plump and furry',
+    nesting: 'Underground in abandoned rodent burrows, also tussock grass',
+    funFact: 'Shouldn\'t be able to fly according to early aerodynamic models. Can heat itself to 37\u00B0C by vibrating its flight muscles.',
+    idleActivities: [CreatureActivity.Resting, CreatureActivity.Foraging],
+    movingActivities: [CreatureActivity.Foraging, CreatureActivity.Patrolling],
+    layer: Layer.LowerShrub,
+    rowRange: [15, 19],
+    movement: MovementPattern.Flit,
+    homeRange: 12,
+    speed: 2.2,
+    rarity: 7,
+    winterBehavior: WinterBehavior.Hibernate,
+    habitat: { minPlants: 3, minMaturePlants: 1, minSpeciesDiversity: 2, attractedBySpecies: ['dogrose', 'elder', 'hawthorn'] },
+    frames: {
+      [CreatureBehavior.Idle]: [
+        { cells: [[0, 0, { char: '*', fg: '#eaaa20' }]] },
+        { cells: [[0, 0, { char: 'o', fg: '#daa010' }]] },
+      ],
+      [CreatureBehavior.Moving]: [
+        { cells: [[0, 0, { char: '*', fg: '#eaaa20' }], [-1, 0, { char: '.', fg: '#8a8a8a' }]] },
+        { cells: [[0, 0, { char: 'o', fg: '#daa010' }], [-1, 0, { char: '\'', fg: '#8a8a8a' }]] },
+      ],
+      [CreatureBehavior.Sleeping]: [
+        { cells: [[0, 0, { char: '.', fg: '#9a7a10' }]] },
+      ],
+    },
+  },
+
+  ladybird: {
+    id: 'ladybird',
+    name: 'Seven-spot Ladybird',
+    latin: 'Coccinella septempunctata',
+    description: 'Bright red beetle that devours aphids. A gardener\'s best friend in the hedge.',
+    diet: 'Aphids, scale insects, mites — up to 50 aphids a day',
+    size: '5-8 mm, dome-shaped',
+    nesting: 'Overwinters in leaf litter, bark crevices, and hedge bases in large groups',
+    funFact: 'Bleeds foul-tasting yellow fluid from its knees when threatened. A single larva eats 400 aphids before pupating.',
+    idleActivities: [CreatureActivity.Resting, CreatureActivity.Basking, CreatureActivity.Foraging],
+    movingActivities: [CreatureActivity.Hunting, CreatureActivity.Foraging],
+    layer: Layer.LowerShrub,
+    rowRange: [16, 19],
+    movement: MovementPattern.Wander,
+    homeRange: 4,
+    speed: 0.4,
+    rarity: 7,
+    winterBehavior: WinterBehavior.Hibernate,
+    habitat: { minPlants: 2, minMaturePlants: 1, minSpeciesDiversity: 1 },
+    frames: {
+      [CreatureBehavior.Idle]: [
+        { cells: [[0, 0, { char: 'o', fg: '#dd2a1a' }]] },
+        { cells: [[0, 0, { char: '*', fg: '#cc2010' }]] },
+      ],
+      [CreatureBehavior.Moving]: [
+        { cells: [[0, 0, { char: 'o', fg: '#dd2a1a' }], [1, 0, { char: '.', fg: '#aa1a0a' }]] },
+        { cells: [[0, 0, { char: '*', fg: '#cc2010' }], [1, 0, { char: '\'', fg: '#aa1a0a' }]] },
+      ],
+      [CreatureBehavior.Sleeping]: [
+        { cells: [[0, 0, { char: '.', fg: '#8a1a0a' }]] },
+      ],
+    },
+  },
+
+  spider: {
+    id: 'spider',
+    name: 'Garden Spider',
+    latin: 'Araneus diadematus',
+    description: 'Master web-builder that strings orbs between hedge branches to catch flying insects.',
+    diet: 'Flies, moths, aphids, mosquitoes — anything caught in the web',
+    size: '1-1.5 cm body, females larger than males',
+    nesting: 'Builds orb webs in sheltered hedge gaps; egg sac hidden in rolled leaves',
+    funFact: 'Eats and rebuilds its entire web every night. Silk is stronger per weight than steel.',
+    idleActivities: [CreatureActivity.Resting, CreatureActivity.Nesting],
+    movingActivities: [CreatureActivity.Hunting],
+    layer: Layer.LowerShrub,
+    rowRange: [15, 19],
+    movement: MovementPattern.Burrow,
+    homeRange: 2,
+    speed: 0.3,
+    rarity: 8,
+    winterBehavior: WinterBehavior.Active,
+    habitat: { minPlants: 2, minMaturePlants: 1, minSpeciesDiversity: 1, attractedBySpecies: ['hawthorn', 'blackthorn'] },
+    frames: {
+      [CreatureBehavior.Idle]: [
+        { cells: [[0, 0, { char: '#', fg: '#7a6a4a' }]] },
+        { cells: [[0, 0, { char: '*', fg: '#6a5a3a' }]] },
+      ],
+      [CreatureBehavior.Moving]: [
+        { cells: [[0, 0, { char: '#', fg: '#7a6a4a' }], [1, 0, { char: '~', fg: '#5a5a5a' }]] },
+        { cells: [[0, 0, { char: '*', fg: '#6a5a3a' }], [1, 0, { char: '-', fg: '#5a5a5a' }]] },
+      ],
+      [CreatureBehavior.Sleeping]: [
+        { cells: [[0, 0, { char: '.', fg: '#4a3a2a' }]] },
+      ],
+    },
+  },
+
+  // ── Additional birds ──────────────────────────────
+
+  bluetit: {
+    id: 'bluetit',
+    name: 'Blue Tit',
+    latin: 'Cyanistes caeruleus',
+    description: 'Acrobatic little bird in blue and yellow. Hangs upside down to pick insects from leaves.',
+    diet: 'Caterpillars, insects, seeds, peanuts from feeders',
+    size: '11-12 cm, weighs about 11g',
+    nesting: 'Tree holes, nest boxes — lines the cup with moss, hair, and feathers',
+    funFact: 'A nesting pair can feed their chicks 1,000 caterpillars a day. Learnt to open milk bottle tops in the 1920s.',
+    idleActivities: [CreatureActivity.Singing, CreatureActivity.Resting, CreatureActivity.Grooming],
+    movingActivities: [CreatureActivity.Foraging, CreatureActivity.Hunting],
+    layer: Layer.MidCanopy,
+    rowRange: [12, 14],
+    movement: MovementPattern.Flit,
+    homeRange: 8,
+    speed: 1.8,
+    rarity: 8,
+    winterBehavior: WinterBehavior.Active,
+    habitat: { minPlants: 3, minMaturePlants: 1, minSpeciesDiversity: 2, attractedBySpecies: ['hazel', 'hawthorn', 'elder'] },
+    frames: {
+      [CreatureBehavior.Idle]: [
+        { cells: [[0, 0, { char: '>', fg: '#4a8aca' }], [-1, 0, { char: '.', fg: '#daba2a' }]] },
+        { cells: [[0, 0, { char: ')', fg: '#4a8aca' }], [-1, 0, { char: ',', fg: '#caaa1a' }]] },
+      ],
+      [CreatureBehavior.Moving]: [
+        { cells: [[0, 0, { char: '>', fg: '#5a9ada' }], [-1, 0, { char: '\'', fg: '#daba2a' }]] },
+        { cells: [[0, 0, { char: '-', fg: '#5a9ada' }], [-1, 0, { char: 'v', fg: '#caaa1a' }]] },
+      ],
+      [CreatureBehavior.Sleeping]: [
+        { cells: [[0, 0, { char: 'o', fg: '#3a6a9a' }]] },
+      ],
+    },
+  },
+
+  goldfinch: {
+    id: 'goldfinch',
+    name: 'Goldfinch',
+    latin: 'Carduelis carduelis',
+    description: 'Dazzling red, gold, and black. Twittering flocks (called "charms") feed on thistles and seeds.',
+    diet: 'Thistle seeds, teasel, dandelion, alder, birch seeds',
+    size: '12-13 cm, fine pointed beak',
+    nesting: 'Neat cup of moss and lichen in hedge forks, lined with thistledown',
+    funFact: 'A group is called a "charm" — from the Old English for their tinkling song. Became a symbol of the Passion in Renaissance art.',
+    idleActivities: [CreatureActivity.Singing, CreatureActivity.Resting, CreatureActivity.Grooming],
+    movingActivities: [CreatureActivity.Foraging, CreatureActivity.Patrolling],
+    layer: Layer.MidCanopy,
+    rowRange: [12, 14],
+    movement: MovementPattern.Flit,
+    homeRange: 10,
+    speed: 1.6,
+    rarity: 6,
+    winterBehavior: WinterBehavior.Active,
+    habitat: { minPlants: 3, minMaturePlants: 2, minSpeciesDiversity: 2, attractedBySpecies: ['hawthorn', 'elder'] },
+    frames: {
+      [CreatureBehavior.Idle]: [
+        { cells: [[0, 0, { char: '>', fg: '#da3a1a' }], [-1, 0, { char: '.', fg: '#eaca2a' }]] },
+        { cells: [[0, 0, { char: ')', fg: '#ca2a0a' }], [-1, 0, { char: ',', fg: '#daba1a' }]] },
+      ],
+      [CreatureBehavior.Moving]: [
+        { cells: [[0, 0, { char: '>', fg: '#da3a1a' }], [-1, 0, { char: '\'', fg: '#eaca2a' }]] },
+        { cells: [[0, 0, { char: '-', fg: '#da3a1a' }], [-1, 0, { char: 'v', fg: '#daba1a' }]] },
+      ],
+      [CreatureBehavior.Sleeping]: [
+        { cells: [[0, 0, { char: 'o', fg: '#9a2a0a' }]] },
+      ],
+    },
+  },
+
+  blackbird: {
+    id: 'blackbird',
+    name: 'Blackbird',
+    latin: 'Turdus merula',
+    description: 'Glossy black male with orange beak sings from the highest hedge-top at dawn and dusk.',
+    diet: 'Earthworms, berries, insects, fruit — a hedge generalist',
+    size: '24-27 cm, chunky thrush',
+    nesting: 'Sturdy mud-lined cup in dense hedgerow, ivy, or shrubs',
+    funFact: 'One of the first birds to sing in the morning and last at night. Males are jet black; females are brown.',
+    idleActivities: [CreatureActivity.Singing, CreatureActivity.Resting, CreatureActivity.Foraging],
+    movingActivities: [CreatureActivity.Foraging, CreatureActivity.Hunting, CreatureActivity.Patrolling],
+    layer: Layer.LowerShrub,
+    rowRange: [15, 19],
+    movement: MovementPattern.Hop,
+    homeRange: 8,
+    speed: 1.0,
+    rarity: 8,
+    winterBehavior: WinterBehavior.Active,
+    habitat: { minPlants: 2, minMaturePlants: 1, minSpeciesDiversity: 1, attractedBySpecies: ['hawthorn', 'elder', 'holly'] },
+    frames: {
+      [CreatureBehavior.Idle]: [
+        { cells: [[0, 0, { char: '>', fg: '#1a1a1a' }], [-1, 0, { char: '.', fg: '#da8a1a' }]] },
+        { cells: [[0, 0, { char: ')', fg: '#2a2a2a' }], [-1, 0, { char: ',', fg: '#ca7a0a' }]] },
+      ],
+      [CreatureBehavior.Moving]: [
+        { cells: [[0, 0, { char: '>', fg: '#1a1a1a' }], [-1, 0, { char: '\'', fg: '#da8a1a' }], [1, 0, { char: '-', fg: '#2a2a2a' }]] },
+        { cells: [[0, 0, { char: '-', fg: '#2a2a2a' }], [-1, 0, { char: 'v', fg: '#ca7a0a' }], [1, 0, { char: '-', fg: '#1a1a1a' }]] },
+      ],
+      [CreatureBehavior.Sleeping]: [
+        { cells: [[0, 0, { char: 'o', fg: '#1a1a1a' }]] },
+      ],
+    },
+  },
+
+  yellowhammer: {
+    id: 'yellowhammer',
+    name: 'Yellowhammer',
+    latin: 'Emberiza citrinella',
+    description: 'Bright yellow bunting that sings "a-little-bit-of-bread-and-no-cheese" from hedgerow perches.',
+    diet: 'Seeds, grain, insects in summer — feeds chicks almost entirely on invertebrates',
+    size: '16-17 cm, streaky yellow and brown',
+    nesting: 'Bulky cup on or near the ground in hedge bottoms and ditches',
+    funFact: 'Beethoven\'s 5th Symphony opening is said to mimic its song. Population halved since the 1980s due to hedge loss.',
+    idleActivities: [CreatureActivity.Singing, CreatureActivity.Resting, CreatureActivity.Grooming],
+    movingActivities: [CreatureActivity.Foraging, CreatureActivity.Patrolling],
+    layer: Layer.LowerShrub,
+    rowRange: [17, 19],
+    movement: MovementPattern.Hop,
+    homeRange: 6,
+    speed: 0.8,
+    rarity: 4,
+    winterBehavior: WinterBehavior.Active,
+    habitat: { minPlants: 4, minMaturePlants: 2, minSpeciesDiversity: 2, attractedBySpecies: ['hawthorn', 'blackthorn'] },
+    frames: {
+      [CreatureBehavior.Idle]: [
+        { cells: [[0, 0, { char: '>', fg: '#eaca2a' }], [-1, 0, { char: '.', fg: '#caaa1a' }]] },
+        { cells: [[0, 0, { char: ')', fg: '#daba1a' }], [-1, 0, { char: ',', fg: '#ba9a0a' }]] },
+      ],
+      [CreatureBehavior.Moving]: [
+        { cells: [[0, 0, { char: '>', fg: '#eaca2a' }], [-1, 0, { char: '\'', fg: '#caaa1a' }]] },
+        { cells: [[0, 0, { char: '-', fg: '#eaca2a' }], [-1, 0, { char: 'v', fg: '#ba9a0a' }]] },
+      ],
+      [CreatureBehavior.Sleeping]: [
+        { cells: [[0, 0, { char: 'o', fg: '#9a8a0a' }]] },
+      ],
+    },
+  },
+
+  songthrush: {
+    id: 'songthrush',
+    name: 'Song Thrush',
+    latin: 'Turdus philomelos',
+    description: 'Speckled songster that smashes snails on stone "anvils". Repeats each song phrase three times.',
+    diet: 'Snails, worms, berries, insects — famous for smashing snails on rocks',
+    size: '20-23 cm, warm brown with spotted breast',
+    nesting: 'Neat cup in dense hedge, lined with smooth mud',
+    funFact: 'Uses a favourite stone as an anvil to crack snail shells. Each bird has its own personal anvil it returns to.',
+    idleActivities: [CreatureActivity.Singing, CreatureActivity.Resting, CreatureActivity.Foraging],
+    movingActivities: [CreatureActivity.Foraging, CreatureActivity.Hunting],
+    layer: Layer.LowerShrub,
+    rowRange: [15, 19],
+    movement: MovementPattern.Hop,
+    homeRange: 8,
+    speed: 0.9,
+    rarity: 5,
+    winterBehavior: WinterBehavior.Active,
+    habitat: { minPlants: 4, minMaturePlants: 2, minSpeciesDiversity: 2, attractedBySpecies: ['hawthorn', 'holly', 'elder'] },
+    frames: {
+      [CreatureBehavior.Idle]: [
+        { cells: [[0, 0, { char: '>', fg: '#8a6a3a' }], [-1, 0, { char: ':', fg: '#aa8a5a' }]] },
+        { cells: [[0, 0, { char: ')', fg: '#7a5a2a' }], [-1, 0, { char: '.', fg: '#9a7a4a' }]] },
+      ],
+      [CreatureBehavior.Moving]: [
+        { cells: [[0, 0, { char: '>', fg: '#8a6a3a' }], [-1, 0, { char: '\'', fg: '#aa8a5a' }], [1, 0, { char: '-', fg: '#7a5a2a' }]] },
+        { cells: [[0, 0, { char: '-', fg: '#8a6a3a' }], [-1, 0, { char: 'v', fg: '#9a7a4a' }], [1, 0, { char: '-', fg: '#7a5a2a' }]] },
+      ],
+      [CreatureBehavior.Sleeping]: [
+        { cells: [[0, 0, { char: 'o', fg: '#5a4a1a' }]] },
+      ],
+    },
+  },
+
+  // ── Additional mammals ──────────────────────────────
+
+  stoat: {
+    id: 'stoat',
+    name: 'Stoat',
+    latin: 'Mustela erminea',
+    description: 'Fierce little predator with a black-tipped tail. Bounds along hedge banks hunting rabbits.',
+    diet: 'Rabbits, voles, birds, eggs — can take prey much larger than itself',
+    size: '17-32 cm body, slender and sinuous',
+    nesting: 'Uses rabbit burrows, rock crevices, or tree roots lined with prey fur',
+    funFact: 'Turns white in winter (called ermine) in northern regions. Hypnotises rabbits by "dancing" wildly before striking.',
+    idleActivities: [CreatureActivity.Resting, CreatureActivity.Grooming],
+    movingActivities: [CreatureActivity.Hunting, CreatureActivity.Patrolling],
+    layer: Layer.Ground,
+    rowRange: [20, 20],
+    movement: MovementPattern.Hop,
+    homeRange: 12,
+    speed: 2.0,
+    rarity: 3,
+    winterBehavior: WinterBehavior.Active,
+    habitat: { minPlants: 4, minMaturePlants: 2, minSpeciesDiversity: 2, attractedBySpecies: ['hawthorn', 'blackthorn'] },
+    frames: {
+      [CreatureBehavior.Idle]: [
+        { cells: [[-1, 0, { char: '(', fg: '#ba8a4a' }], [0, 0, { char: ':', fg: '#ca9a5a' }], [1, 0, { char: '~', fg: '#1a1a1a' }]] },
+        { cells: [[-1, 0, { char: '(', fg: '#aa7a3a' }], [0, 0, { char: '.', fg: '#ba8a4a' }], [1, 0, { char: '~', fg: '#1a1a1a' }]] },
+      ],
+      [CreatureBehavior.Moving]: [
+        { cells: [[-1, 0, { char: '~', fg: '#ba8a4a' }], [0, 0, { char: '>', fg: '#ca9a5a' }], [1, 0, { char: '~', fg: '#1a1a1a' }]] },
+        { cells: [[-1, 0, { char: '-', fg: '#aa7a3a' }], [0, 0, { char: '>', fg: '#ca9a5a' }], [1, 0, { char: '-', fg: '#1a1a1a' }]] },
+      ],
+      [CreatureBehavior.Sleeping]: [
+        { cells: [[0, 0, { char: 'c', fg: '#8a6a2a' }]] },
+      ],
+    },
+  },
+
+  bankvole: {
+    id: 'bankvole',
+    name: 'Bank Vole',
+    latin: 'Myodes glareolus',
+    description: 'Chestnut-furred rodent that scurries through hedge bottoms collecting berries and seeds.',
+    diet: 'Berries, seeds, nuts, fungi, roots, bark, insects',
+    size: '8-12 cm body, blunt nose and small ears',
+    nesting: 'Shallow burrows under tree roots, or nests of grass and moss in hedge bases',
+    funFact: 'Can climb surprisingly well — often found high in hedges eating hawthorn berries. Lives just 18 months.',
+    idleActivities: [CreatureActivity.Resting, CreatureActivity.Grooming, CreatureActivity.Foraging],
+    movingActivities: [CreatureActivity.Foraging, CreatureActivity.Patrolling],
+    layer: Layer.Ground,
+    rowRange: [20, 20],
+    movement: MovementPattern.Hop,
+    homeRange: 5,
+    speed: 1.0,
+    rarity: 6,
+    winterBehavior: WinterBehavior.Active,
+    habitat: { minPlants: 3, minMaturePlants: 1, minSpeciesDiversity: 2, attractedBySpecies: ['hazel', 'hawthorn', 'blackthorn'] },
+    frames: {
+      [CreatureBehavior.Idle]: [
+        { cells: [[0, 0, { char: 'n', fg: '#aa5a2a' }]] },
+        { cells: [[0, 0, { char: 'n', fg: '#9a4a1a' }]] },
+      ],
+      [CreatureBehavior.Moving]: [
+        { cells: [[0, 0, { char: 'n', fg: '#aa5a2a' }], [-1, 0, { char: '~', fg: '#8a4a1a' }]] },
+        { cells: [[0, 0, { char: '>', fg: '#aa5a2a' }], [-1, 0, { char: '-', fg: '#8a4a1a' }]] },
+      ],
+      [CreatureBehavior.Sleeping]: [
+        { cells: [[0, 0, { char: 'c', fg: '#7a3a0a' }]] },
+      ],
+    },
+  },
+
+  // ── Additional amphibians ──────────────────────────────
+
+  frog: {
+    id: 'frog',
+    name: 'Common Frog',
+    latin: 'Rana temporaria',
+    description: 'Smooth-skinned jumper that hunts in damp hedge bottoms. Migrates to ponds in spring.',
+    diet: 'Slugs, snails, worms, insects, spiders',
+    size: '6-9 cm, smooth skin with dark eye patch',
+    nesting: 'Breeds in ponds; spends most of the year in damp hedgerows and woodland edges',
+    funFact: 'Can breathe through its skin. A single female can lay 2,000 eggs in one jelly-like clump.',
+    idleActivities: [CreatureActivity.Resting, CreatureActivity.Basking],
+    movingActivities: [CreatureActivity.Hunting, CreatureActivity.Foraging],
+    layer: Layer.Ground,
+    rowRange: [20, 20],
+    movement: MovementPattern.Hop,
+    homeRange: 6,
+    speed: 1.4,
+    rarity: 6,
+    winterBehavior: WinterBehavior.Hibernate,
+    habitat: { minPlants: 3, minMaturePlants: 1, minSpeciesDiversity: 2, attractedBySpecies: ['elder', 'hawthorn'] },
+    frames: {
+      [CreatureBehavior.Idle]: [
+        { cells: [[0, 0, { char: '&', fg: '#4a7a2a' }]] },
+        { cells: [[0, 0, { char: '&', fg: '#3a6a1a' }]] },
+      ],
+      [CreatureBehavior.Moving]: [
+        { cells: [[0, 0, { char: '&', fg: '#4a7a2a' }]] },
+        { cells: [[0, 0, { char: '^', fg: '#5a8a3a' }]] },
+      ],
+      [CreatureBehavior.Sleeping]: [
+        { cells: [[0, 0, { char: 'o', fg: '#2a4a0a' }]] },
+      ],
+    },
+  },
+
+  newt: {
+    id: 'newt',
+    name: 'Smooth Newt',
+    latin: 'Lissotriton vulgaris',
+    description: 'Spotted amphibian that hides under logs and stones near hedgerows. Males grow a wavy crest in spring.',
+    diet: 'Tadpoles, small insects, worms, slugs, water fleas',
+    size: '7-11 cm, slender with a spotted belly',
+    nesting: 'Breeds in ponds, wrapping eggs in leaves; lives on land rest of the year under stones and logs',
+    funFact: 'Males develop a spectacular wavy crest along their back and tail during breeding season to impress females.',
+    idleActivities: [CreatureActivity.Resting, CreatureActivity.Basking],
+    movingActivities: [CreatureActivity.Hunting, CreatureActivity.Foraging],
+    layer: Layer.Underground,
+    rowRange: [21, 24],
+    movement: MovementPattern.Wander,
+    homeRange: 4,
+    speed: 0.3,
+    rarity: 4,
+    winterBehavior: WinterBehavior.Hibernate,
+    habitat: { minPlants: 4, minMaturePlants: 2, minSpeciesDiversity: 2, attractedBySpecies: ['hawthorn', 'elder'] },
+    frames: {
+      [CreatureBehavior.Idle]: [
+        { cells: [[0, 0, { char: '~', fg: '#6a5a2a' }], [1, 0, { char: '.', fg: '#5a4a1a' }]] },
+        { cells: [[0, 0, { char: 's', fg: '#6a5a2a' }], [1, 0, { char: '.', fg: '#5a4a1a' }]] },
+      ],
+      [CreatureBehavior.Moving]: [
+        { cells: [[-1, 0, { char: '~', fg: '#4a3a0a' }], [0, 0, { char: '~', fg: '#6a5a2a' }], [1, 0, { char: '>', fg: '#5a4a1a' }]] },
+        { cells: [[-1, 0, { char: '-', fg: '#4a3a0a' }], [0, 0, { char: '~', fg: '#6a5a2a' }], [1, 0, { char: '~', fg: '#5a4a1a' }]] },
+      ],
+      [CreatureBehavior.Sleeping]: [
+        { cells: [[0, 0, { char: 'o', fg: '#3a2a0a' }]] },
       ],
     },
   },

@@ -226,11 +226,11 @@ export class AsciiRenderer {
 
     for (let row = 0; row < rows; row++) {
       const isSkyRow = row <= SKY_END_ROW;
-      const bgColor = isSkyRow ? this.skyBgColor : getBackgroundColor(row);
 
       for (let col = 0; col < cols; col++) {
         const x = col * cellWidth;
         const y = row * cellHeight;
+        const bgColor = isSkyRow ? this.skyBgColor : getBackgroundColor(row, col);
 
         // Check for overlay — pick highest layer
         const layers = this.overlays.get(`${col},${row}`);

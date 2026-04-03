@@ -176,9 +176,18 @@ export enum Weather {
 // ── Soil system ──────────────────────────────
 
 export enum SoilLayer {
-  Topsoil = 0,   // rows 21-27
-  Subsoil = 1,   // rows 28-40
-  Bedrock = 2,   // rows 41-54
+  Topsoil = 0,
+  Subsoil = 1,
+  Bedrock = 2,
+}
+
+/** Soil character of a horizontal terrain zone */
+export enum SoilBiome {
+  Loam   = 0,  // rich, dark brown — balanced
+  Clay   = 1,  // heavy, orange-brown — high rock, holds water
+  Chalk  = 2,  // pale grey-white — alkaline, stony
+  Peat   = 3,  // very dark, acidic, wet — high fertility
+  Sandy  = 4,  // light tan, dry — low fertility, low rock
 }
 
 export interface SoilCell {
@@ -410,4 +419,5 @@ export interface SaveData {
   selectedSpeciesIndex: number;
   viewMode: ViewMode;
   starSeed?: number;
+  terrainSeed?: number;
 }

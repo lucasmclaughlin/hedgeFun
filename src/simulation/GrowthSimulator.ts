@@ -20,6 +20,10 @@ export class GrowthSimulator {
     this.soilMap = soilMap;
   }
 
+  setSoilMap(soilMap: SoilMap): void {
+    this.soilMap = soilMap;
+  }
+
   addPlant(speciesId: string, col: number, row: number, currentPeriod: number, selfSeeded = false): void {
     this.plants.push({
       speciesId,

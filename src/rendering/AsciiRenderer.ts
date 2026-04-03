@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { Glyph, GRID_CONFIG, OverlayLayer, Season, Weather } from '@/types';
+import { Glyph, SoilBiome, GRID_CONFIG, OverlayLayer, Season, Weather } from '@/types';
 import { getBackgroundGlyph, getBackgroundColor } from './GlyphAtlas';
 
 /** Season color tints [R, G, B] offsets */
@@ -82,6 +82,11 @@ export class AsciiRenderer {
   /** Layered overlay grid: "col,row" -> map of layer -> Glyph (highest layer draws on top) */
   private overlays: Map<string, Map<number, Glyph>> = new Map();
 
+  /** Per-column terrain ground rows — set from TerrainMap */
+  private groundRows: number[] | null = null;
+  /** Per-column soil biomes — set from TerrainMap */
+  private biomes: SoilBiome[] | null = null;
+
   /** Cursor position */
   private cursorCol = 0;
   private cursorRow = 30; // start on ground layer
@@ -121,6 +126,12 @@ export class AsciiRenderer {
     // Initial render
     this.renderFullGrid();
     this.texture.refresh();
+  }
+
+  /** Set terrain data so the renderer can use depth-relative backgrounds. */
+  setTerrainData(groundRows: number[], biomes: SoilBiome[]): void {
+    this.groundRows = groundRows;
+    this.biomes     = biomes;
   }
 
   /** Update day/night phase (0–1, where 0/1 = midnight, 0.5 = noon) */
@@ -228,9 +239,14 @@ export class AsciiRenderer {
       const isSkyRow = row <= SKY_END_ROW;
 
       for (let col = 0; col < cols; col++) {
+        const colGroundRow = this.groundRows ? this.groundRows[col] : 20;
+        const colBiome     = this.biomes     ? this.biomes[col]     : 0;
+        const bgColor = isSkyRow
+          ? this.skyBgColor
+          : getBackgroundColor(row, colGroundRow, colBiome);
+
         const x = col * cellWidth;
         const y = row * cellHeight;
-        const bgColor = isSkyRow ? this.skyBgColor : getBackgroundColor(row, col);
 
         // Check for overlay — pick highest layer
         const layers = this.overlays.get(`${col},${row}`);
@@ -241,7 +257,7 @@ export class AsciiRenderer {
             if (l > maxLayer) { maxLayer = l; overlay = g; }
           }
         }
-        const glyph = overlay ?? getBackgroundGlyph(col, row);
+        const glyph = overlay ?? getBackgroundGlyph(col, row, colGroundRow, colBiome);
 
         // Draw background — apply subtle tint to overlay backgrounds
         const baseBg = glyph.bg ?? bgColor;

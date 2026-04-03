@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { AsciiRenderer } from '@/rendering/AsciiRenderer';
-import { GRID_CONFIG, LAYER_CONFIGS, ViewMode } from '@/types';
+import { GRID_CONFIG, ViewMode } from '@/types';
 import { TimeClock } from '@/simulation/TimeClock';
 import { EnergyManager } from '@/simulation/EnergyManager';
 import { GrowthSimulator } from '@/simulation/GrowthSimulator';
@@ -10,11 +10,12 @@ import { WeatherEngine } from '@/simulation/WeatherEngine';
 import { HabitatScorer } from '@/simulation/HabitatScorer';
 import { CreatureSimulator } from '@/simulation/CreatureSimulator';
 import { CreatureRenderer } from '@/simulation/CreatureRenderer';
-import { HudRenderer } from '@/ui/HudRenderer';
+import { HudRenderer, type TerrainHoverInfo } from '@/ui/HudRenderer';
 import { BiodiversityTracker } from '@/simulation/BiodiversityTracker';
 import { SaveManager } from '@/simulation/SaveManager';
 import { RealtimeModeManager } from '@/simulation/RealtimeModeManager';
 import { StarMap } from '@/simulation/StarMap';
+import { TerrainMap } from '@/simulation/TerrainMap';
 import { getCompanionRelationships } from '@/simulation/companionPlanting';
 import { SPECIES_LIST } from '@/data/species';
 import { saveHighScore } from '@/scenes/SplashScene';
@@ -23,13 +24,6 @@ import type { PlantState, CreatureState, SaveData } from '@/types';
 /** Auto-save every 12 periods (1 full year) */
 const AUTO_SAVE_INTERVAL = 12;
 
-/** Deterministic hash for boulder/aquifer placement */
-function hash(x: number, y: number): number {
-  let h = x * 374761393 + y * 668265263;
-  h = (h ^ (h >> 13)) * 1274126177;
-  h = h ^ (h >> 16);
-  return (h & 0x7fffffff) / 0x7fffffff;
-}
 
 export class GameScene extends Phaser.Scene {
   private asciiRenderer!: AsciiRenderer;
@@ -60,14 +54,12 @@ export class GameScene extends Phaser.Scene {
   private mouseScreenX = 0;
   private mouseScreenY = 0;
 
-  /** Ground surface row — cursor is locked here */
-  private readonly groundRow = LAYER_CONFIGS[4].startRow;
+  /** Terrain map — procedural landscape for this playthrough */
+  private terrainMap!: TerrainMap;
+  private terrainSeed = 0;
 
-  /** Underground layer config */
-  private readonly undergroundConfig = LAYER_CONFIGS[5];
-
-  /** Sky layer config */
-  private readonly skyConfig = LAYER_CONFIGS[0];
+  /** SoilMap stored as field so terrain decoration can access it */
+  private soilMap!: SoilMap;
 
   /** Current view mode */
   private viewMode = ViewMode.Hedge;
@@ -110,9 +102,6 @@ export class GameScene extends Phaser.Scene {
     this.cameras.main.setBounds(0, 0, worldWidth, worldHeight);
     this.cameras.main.scrollX = worldWidth / 2 - this.cameras.main.width / 2;
 
-    // Place cursor on ground row, centered
-    this.asciiRenderer.setCursor(Math.floor(GRID_CONFIG.cols / 2), this.groundRow);
-
     // Keyboard input
     this.cursors = this.input.keyboard!.createCursorKeys();
 
@@ -141,9 +130,32 @@ export class GameScene extends Phaser.Scene {
       if (col >= 0 && col < GRID_CONFIG.cols && row >= 0 && row < GRID_CONFIG.rows) {
         this.hoveredCreature = this.creatureSim.getCreatureAtCell(col, row);
         this.hoveredPlant = this.hoveredCreature ? null : this.growthSim.getPlantAtCell(col, row);
+
+        // Terrain hover — show soil info when mousing over underground cells
+        const groundRow = this.terrainMap.getGroundRow(col);
+        if (row > groundRow && !this.hoveredPlant && !this.hoveredCreature) {
+          const soil = this.soilMap.getSoilAt(col, row);
+          const info: TerrainHoverInfo = {
+            col,
+            row,
+            depth: row - groundRow,
+            soilLayer: soil.layer,
+            biome: this.terrainMap.getBiome(col),
+            fertility: soil.fertility,
+            rockDensity: soil.rockDensity,
+            inBoulder: this.terrainMap.isInBoulderMass(col, row),
+            inClayLens: this.terrainMap.isInClayLens(col, row),
+            nearAquifer: this.terrainMap.isNearAquifer(col, row),
+            isSpring: this.terrainMap.isSpring(col),
+          };
+          this.hudRenderer.setHoveredTerrainInfo(info);
+        } else {
+          this.hudRenderer.setHoveredTerrainInfo(null);
+        }
       } else {
         this.hoveredPlant = null;
         this.hoveredCreature = null;
+        this.hudRenderer.setHoveredTerrainInfo(null);
       }
 
       if (!this.isDragging) return;
@@ -174,20 +186,39 @@ export class GameScene extends Phaser.Scene {
         const worldX = pointer.worldX;
         const col = Math.floor(worldX / GRID_CONFIG.cellWidth);
         if (col >= 0 && col < GRID_CONFIG.cols) {
-          this.asciiRenderer.setCursor(col, this.groundRow);
+          this.asciiRenderer.setCursor(col, this.terrainMap.getGroundRow(col));
         }
       }
     });
 
+    // Initialize terrain (before everything else — other systems read from it)
+    this.terrainSeed = (Date.now() ^ Math.floor(Math.random() * 0x100000000)) | 0;
+    this.terrainMap  = TerrainMap.generate(this.terrainSeed);
+
+    // Place cursor on ground row at center column (after terrain is ready)
+    const centerCol = Math.floor(GRID_CONFIG.cols / 2);
+    this.asciiRenderer.setCursor(centerCol, this.terrainMap.getGroundRow(centerCol));
+
     // Initialize simulation systems
-    const soilMap = new SoilMap(GRID_CONFIG.cols, this.groundRow, GRID_CONFIG.rows);
+    this.soilMap = new SoilMap(GRID_CONFIG.cols, GRID_CONFIG.rows, this.terrainMap);
     this.timeClock = new TimeClock();
     this.energyManager = new EnergyManager();
-    this.growthSim = new GrowthSimulator(soilMap);
+    this.growthSim = new GrowthSimulator(this.soilMap);
     this.plantRenderer = new PlantRenderer(this.asciiRenderer);
     this.weatherEngine = new WeatherEngine(this.asciiRenderer);
     this.starSeed = (Date.now() ^ Math.floor(Math.random() * 0x100000000)) | 0;
     this.starMap = new StarMap(this.asciiRenderer, this.starSeed);
+
+    // Push terrain layout into the renderer so backgrounds are depth-relative
+    {
+      const gRows: number[] = [];
+      const biomes: number[] = [];
+      for (let c = 0; c < GRID_CONFIG.cols; c++) {
+        gRows.push(this.terrainMap.getGroundRow(c));
+        biomes.push(this.terrainMap.getBiome(c));
+      }
+      this.asciiRenderer.setTerrainData(gRows, biomes);
+    }
     this.habitatScorer = new HabitatScorer();
     this.creatureSim = new CreatureSimulator(this.habitatScorer);
     this.creatureRenderer = new CreatureRenderer(this.asciiRenderer);
@@ -218,12 +249,8 @@ export class GameScene extends Phaser.Scene {
     this.asciiRenderer.setEnvironment(initPeriod.season, this.weatherEngine.getCurrentWeather());
 
     // Add decorative elements after systems init
-    this.addGroundDecoration(soilMap);
-    const ugStart = this.undergroundConfig.startRow;
-    const ugEnd = this.undergroundConfig.endRow;
-    this.addBoulders(soilMap, ugStart, ugEnd);
-    this.addAquifers(ugStart, ugEnd);
-    this.addBurrows(ugStart, ugEnd);
+    this.addTerrainDecoration();
+    this.addBurrows(this.terrainMap.getGroundRow(Math.floor(GRID_CONFIG.cols / 2)), GRID_CONFIG.rows - 1);
 
     // Check for save data passed via init
     const initData = this.scene.settings.data as { loadSave?: SaveData } | undefined;
@@ -360,12 +387,12 @@ export class GameScene extends Phaser.Scene {
     const col = this.asciiRenderer.getCursorCol();
 
     switch (event.key) {
-      // Cursor movement — horizontal only, locked to ground row
+      // Cursor movement — horizontal only, follows terrain height
       case 'a': case 'A':
-        if (col > 0) this.asciiRenderer.setCursor(col - 1, this.groundRow);
+        if (col > 0) this.asciiRenderer.setCursor(col - 1, this.terrainMap.getGroundRow(col - 1));
         break;
       case 'd': case 'D':
-        if (col < GRID_CONFIG.cols - 1) this.asciiRenderer.setCursor(col + 1, this.groundRow);
+        if (col < GRID_CONFIG.cols - 1) this.asciiRenderer.setCursor(col + 1, this.terrainMap.getGroundRow(col + 1));
         break;
 
       // Species selection (1-6)
@@ -498,7 +525,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     // Plant it
-    this.growthSim.addPlant(species.id, col, this.groundRow, this.timeClock.getTotalPeriods());
+    this.growthSim.addPlant(species.id, col, this.terrainMap.getGroundRow(col), this.timeClock.getTotalPeriods());
     this.plantRenderer.renderPlants(this.growthSim.getPlants(), this.timeClock.getCurrentPeriod().season);
     this.hudRenderer.showMessage(`Planted ${species.name}!`);
   }
@@ -603,8 +630,9 @@ export class GameScene extends Phaser.Scene {
     const worldWidth = this.asciiRenderer.getWorldWidth();
     const ch = GRID_CONFIG.cellHeight;
 
-    // Ground row is the boundary between above/below
-    const groundBottom = (this.groundRow + 1) * ch;
+    // Use the deepest terrain ground row so the full surface is always visible
+    const maxGR = this.terrainMap.getMaxGroundRow();
+    const groundBottom = (maxGR + 1) * ch;
 
     switch (this.viewMode) {
       case ViewMode.Hedge: {
@@ -615,7 +643,7 @@ export class GameScene extends Phaser.Scene {
         break;
       }
       case ViewMode.Underground: {
-        const top = this.groundRow * ch;
+        const top = this.terrainMap.getMaxGroundRow() * ch;
         const zoneHeight = GRID_CONFIG.rows * ch - top;
         cam.setZoom(cam.height / zoneHeight);
         cam.setBounds(0, top, worldWidth, zoneHeight);
@@ -655,6 +683,7 @@ export class GameScene extends Phaser.Scene {
       selectedSpeciesIndex: this.selectedSpeciesIndex,
       viewMode: this.viewMode,
       starSeed: this.starSeed,
+      terrainSeed: this.terrainSeed,
     };
   }
 
@@ -671,6 +700,26 @@ export class GameScene extends Phaser.Scene {
       this.starMap.reseed(this.starSeed);
     }
     this.starMap.setWeather(save.currentWeather);
+
+    // Restore terrain (or use flat fallback for pre-terrain saves)
+    if (save.terrainSeed !== undefined) {
+      this.terrainSeed = save.terrainSeed;
+      this.terrainMap  = TerrainMap.generate(this.terrainSeed);
+    } else {
+      this.terrainMap = TerrainMap.createFlat();
+    }
+    // Push restored terrain into renderer and rebuild soilMap
+    {
+      const gRows: number[] = [];
+      const biomes: number[] = [];
+      for (let c = 0; c < GRID_CONFIG.cols; c++) {
+        gRows.push(this.terrainMap.getGroundRow(c));
+        biomes.push(this.terrainMap.getBiome(c));
+      }
+      this.asciiRenderer.setTerrainData(gRows, biomes);
+    }
+    this.soilMap = new SoilMap(GRID_CONFIG.cols, GRID_CONFIG.rows, this.terrainMap);
+    this.growthSim.setSoilMap(this.soilMap);
     this.selectedSpeciesIndex = save.selectedSpeciesIndex ?? 0;
     this.viewMode = save.viewMode ?? ViewMode.Hedge;
 
@@ -722,7 +771,7 @@ export class GameScene extends Phaser.Scene {
     // Zoom to fit full hedge width while keeping sky-to-ground visible
     const cam = this.cameras.main;
     const worldWidth = this.asciiRenderer.getWorldWidth();
-    const groundBottom = (this.groundRow + 1) * GRID_CONFIG.cellHeight;
+    const groundBottom = (this.terrainMap.getMaxGroundRow() + 1) * GRID_CONFIG.cellHeight;
     const zoomX = cam.width / worldWidth;
     const zoomY = cam.height / groundBottom;
     const zoom = Math.min(zoomX, zoomY);
@@ -780,126 +829,139 @@ export class GameScene extends Phaser.Scene {
     this.hudRenderer.showMessage('Realtime mode off');
   }
 
-  /** Add ground-level decoration: grass tufts, soil texture, rocks */
-  private addGroundDecoration(soilMap: SoilMap): void {
-    const groundGlyphs = [
-      { char: '"', fg: '#7aba4a' },
-      { char: "'", fg: '#6aaa3a' },
-      { char: ',', fg: '#8aca5a' },
-      { char: '`', fg: '#7aba4a' },
-      { char: '"', fg: '#5a9a2a' },
+  /**
+   * Place all terrain-driven decoration: biome-aware grass, slope indicators,
+   * springs, underground soil detail, boulder masses, aquifers, clay lenses.
+   * All placement is deterministic via terrainMap.decorHash().
+   */
+  private addTerrainDecoration(): void {
+    const cols    = GRID_CONFIG.cols;
+    const maxRow  = GRID_CONFIG.rows - 1;
+
+    // ── Biome grass palettes ──────────────────────────────────────────
+    type Glyph = { char: string; fg: string };
+    const BIOME_GRASS: Glyph[][] = [
+      [{ char: '"', fg: '#7aba4a' }, { char: "'", fg: '#6aaa3a' }, { char: ',', fg: '#8aca5a' }, { char: '`', fg: '#7aba4a' }], // Loam
+      [{ char: '"', fg: '#6aaa3a' }, { char: '_', fg: '#5a8a2a' }, { char: ',', fg: '#587a30' }, { char: ' ', fg: '#587a30' }], // Clay
+      [{ char: '.', fg: '#c8c8b0' }, { char: ',', fg: '#b0b098' }, { char: "'", fg: '#a0a890' }, { char: '\u00B7', fg: '#d0d0c0' }], // Chalk
+      [{ char: '%', fg: '#3a4a1a' }, { char: '~', fg: '#2a3a10' }, { char: ',', fg: '#4a5a20' }, { char: '.', fg: '#3a4018' }], // Peat
+      [{ char: '.', fg: '#aaa060' }, { char: "'", fg: '#b8b070' }, { char: ',', fg: '#a09050' }, { char: ' ', fg: '#908040' }], // Sandy
     ];
 
-    // Scatter grass on ground row
-    for (let col = 0; col < GRID_CONFIG.cols; col++) {
-      if (Math.random() < 0.6) {
-        const g = groundGlyphs[Math.floor(Math.random() * groundGlyphs.length)];
-        this.asciiRenderer.setOverlay(col, this.groundRow, g);
+    // ── Surface: grass and slope indicators ──────────────────────────
+    for (let col = 0; col < cols; col++) {
+      const gRow  = this.terrainMap.getGroundRow(col);
+      const biome = this.terrainMap.getBiome(col);
+
+      // Grass (deterministic, ~65% density)
+      if (this.terrainMap.decorHash(col, 0) < 0.65) {
+        const palette = BIOME_GRASS[biome];
+        const g = palette[Math.floor(this.terrainMap.decorHash(col, 1) * palette.length)];
+        this.asciiRenderer.setOverlay(col, gRow, g);
+      }
+
+      // Spring indicator — where aquifer breaks surface
+      if (this.terrainMap.isSpring(col)) {
+        this.asciiRenderer.setOverlay(col, gRow, { char: '~', fg: '#4a8aaa' });
+      }
+
+      // Slope indicator at height transitions
+      if (col > 0) {
+        const prevRow = this.terrainMap.getGroundRow(col - 1);
+        if (prevRow < gRow) {
+          // Ground drops: place \ on transition col
+          this.asciiRenderer.setOverlay(col, gRow - 1, { char: '\\', fg: '#4a6a2a' });
+        } else if (prevRow > gRow) {
+          // Ground rises: place / on previous col
+          this.asciiRenderer.setOverlay(col - 1, gRow, { char: '/', fg: '#4a6a2a' });
+        }
       }
     }
 
-    const ugStart = this.undergroundConfig.startRow;
-    const ugEnd = this.undergroundConfig.endRow;
+    // ── Underground: soil detail ──────────────────────────────────────
+    for (let col = 0; col < cols; col++) {
+      const gRow = this.terrainMap.getGroundRow(col);
+      for (let row = gRow + 1; row <= maxRow; row++) {
+        const cell = this.soilMap.getSoilAt(col, row);
+        const h    = this.terrainMap.decorHash(col, row);
 
-    // Underground: soil-aware decoration using SoilMap data
-    for (let col = 0; col < GRID_CONFIG.cols; col++) {
-      for (let row = ugStart; row <= ugEnd; row++) {
-        const cell = soilMap.getSoilAt(col, row);
-
-        if (cell.rockDensity > 0.7 && Math.random() < 0.15) {
+        if (cell.rockDensity > 0.7 && h < 0.14) {
           const rockChars = ['O', '@', '#'];
-          const ch = rockChars[Math.floor(Math.random() * rockChars.length)];
+          const ch = rockChars[Math.floor(this.terrainMap.decorHash(col, row + 1000) * rockChars.length)];
           this.asciiRenderer.setOverlay(col, row, { char: ch, fg: '#4a4a52' });
-        } else if (cell.rockDensity > 0.4 && Math.random() < 0.08) {
+        } else if (cell.rockDensity > 0.4 && h < 0.07) {
           this.asciiRenderer.setOverlay(col, row, { char: 'o', fg: '#3a3a42' });
-        }
-
-        if (cell.fertility > 0.8 && Math.random() < 0.06) {
+        } else if (cell.fertility > 0.8 && h < 0.055) {
           const fertChars = ['%', 'w', '~'];
-          const ch = fertChars[Math.floor(Math.random() * fertChars.length)];
+          const ch = fertChars[Math.floor(this.terrainMap.decorHash(col, row + 2000) * fertChars.length)];
           this.asciiRenderer.setOverlay(col, row, { char: ch, fg: '#4a3a1a' });
         }
       }
     }
 
-    // Sky — occasional stars/clouds
-    for (let col = 0; col < GRID_CONFIG.cols; col++) {
-      for (let row = this.skyConfig.startRow; row <= this.skyConfig.endRow; row++) {
-        if (Math.random() < 0.02) {
-          this.asciiRenderer.setOverlay(col, row, { char: '*', fg: '#9a9abe' });
-        } else if (Math.random() < 0.01) {
-          this.asciiRenderer.setOverlay(col, row, { char: '~', fg: '#5a5a7a' });
-        }
-      }
-    }
-  }
-
-  /** Place large multi-cell boulder formations in the underground */
-  private addBoulders(soilMap: SoilMap, ugStart: number, ugEnd: number): void {
-    const cols = GRID_CONFIG.cols;
+    // ── Boulder masses ────────────────────────────────────────────────
     const boulderTemplates: Array<Array<[number, number, string]>> = [
       [[-1, 0, '('], [0, 0, 'O'], [1, 0, ')'], [0, -1, '_'], [0, 1, '-']],
       [[-2, 0, '('], [-1, 0, '='], [0, 0, 'O'], [1, 0, '='], [2, 0, ')'], [0, -1, '_']],
       [[0, 0, 'O'], [0, -1, 'O'], [-1, 0, '('], [1, 0, ')']],
-      [[0, 0, '@'], [-1, 0, 'O'], [1, 0, 'O'], [0, -1, 'O'], [-1, -1, '('], [1, -1, ')'], [0, 1, '_']],
+      [[0, 0, '@'], [-1, 0, 'O'], [1, 0, 'O'], [0, -1, 'O'], [-1, -1, '('], [1, -1, ')']],
       [[-1, 0, '('], [0, 0, 'O'], [1, 0, ')']],
     ];
     const boulderColors = ['#5a5a66', '#6a6a72', '#505060', '#585868', '#626270'];
 
-    for (let col = 5; col < cols - 5; col++) {
-      for (let depthZone = 0; depthZone < 3; depthZone++) {
-        const baseRow = ugStart + 4 + depthZone * 10;
-        if (baseRow > ugEnd - 2) continue;
-        const h = hash(col, baseRow + depthZone * 1000);
-        if (h > 0.06) continue;
-        const row = baseRow + Math.floor(hash(col + 1, baseRow) * 6) - 3;
-        if (row < ugStart + 1 || row > ugEnd - 1) continue;
-        const cell = soilMap.getSoilAt(col, row);
-        if (cell.rockDensity < 0.3) continue;
-        const templateIdx = Math.floor(hash(col + 2, row) * boulderTemplates.length);
-        const template = boulderTemplates[templateIdx];
-        const colorIdx = Math.floor(hash(col + 3, row) * boulderColors.length);
-        const baseColor = boulderColors[colorIdx];
+    for (const b of this.terrainMap.getBoulderMasses()) {
+      const tIdx = Math.floor(this.terrainMap.decorHash(b.col, b.row) * boulderTemplates.length);
+      const template = boulderTemplates[tIdx];
+      const cIdx = Math.floor(this.terrainMap.decorHash(b.col + 1, b.row) * boulderColors.length);
+      const baseColor = boulderColors[cIdx];
+      const bR = parseInt(baseColor.substring(1, 3), 16);
+      const bG = parseInt(baseColor.substring(3, 5), 16);
+      const bB = parseInt(baseColor.substring(5, 7), 16);
+
+      // Scatter template art across the boulder mass area
+      for (let dc = 0; dc < b.width; dc += Math.max(1, Math.floor(b.width / template.length))) {
+        const anchorCol = b.col + dc;
+        const anchorRow = b.row + Math.floor(b.height / 2);
         for (const [cOff, rOff, ch] of template) {
-          const bc = col + cOff;
-          const br = row + rOff;
-          if (bc < 0 || bc >= cols || br < ugStart || br > ugEnd) continue;
-          const bright = hash(bc, br) * 0.15;
-          const r = parseInt(baseColor.substring(1, 3), 16);
-          const g = parseInt(baseColor.substring(3, 5), 16);
-          const b = parseInt(baseColor.substring(5, 7), 16);
-          const nr = Math.min(255, Math.round(r + bright * 40));
-          const ng = Math.min(255, Math.round(g + bright * 40));
-          const nb = Math.min(255, Math.round(b + bright * 40));
+          const ac = anchorCol + cOff;
+          const ar = anchorRow + rOff;
+          if (ac < 0 || ac >= cols || ar < 0 || ar > maxRow) continue;
+          const bright = this.terrainMap.decorHash(ac, ar) * 0.15;
+          const nr = Math.min(255, Math.round(bR + bright * 40));
+          const ng = Math.min(255, Math.round(bG + bright * 40));
+          const nb = Math.min(255, Math.round(bB + bright * 40));
           const fg = '#' + ((nr << 16) | (ng << 8) | nb).toString(16).padStart(6, '0');
-          this.asciiRenderer.setOverlay(bc, br, { char: ch, fg, bg: '#1a1a22' });
+          this.asciiRenderer.setOverlay(ac, ar, { char: ch, fg, bg: '#1a1a22' });
         }
       }
     }
-  }
 
-  /** Place sinusoidal water aquifer veins through the underground */
-  private addAquifers(ugStart: number, ugEnd: number): void {
-    const cols = GRID_CONFIG.cols;
-    const aquifers = [
-      { centerRow: ugStart + 10, amp: 2.5, freq: 0.04, width: 2, fg: '#2a4a6a', fgBright: '#3a6a8a' },
-      { centerRow: ugStart + 22, amp: 3, freq: 0.03, width: 3, fg: '#1a3a5a', fgBright: '#2a5a7a' },
-      { centerRow: ugStart + 8, amp: 1.5, freq: 0.06, width: 1, fg: '#2a4a6a', fgBright: '#3a5a7a' },
-    ];
-    const waterChars = ['~', '\u2248', '.', '-', '~'];
-    for (const aq of aquifers) {
-      for (let col = 0; col < cols; col++) {
-        const waveY = aq.centerRow + Math.sin(col * aq.freq + aq.amp) * aq.amp;
+    // ── Aquifers ──────────────────────────────────────────────────────
+    const waterChars = ['~', '\u2248', '.', '-'];
+    for (const aq of this.terrainMap.getAquifers()) {
+      for (let col = aq.colStart; col <= aq.colEnd; col++) {
         for (let w = -aq.width; w <= aq.width; w++) {
-          const row = Math.round(waveY + w);
-          if (row < ugStart || row > ugEnd) continue;
-          const distFromCenter = Math.abs(w) / (aq.width + 1);
-          const density = 0.6 - distFromCenter * 0.4;
-          if (hash(col * 3 + w, row * 7) > density) continue;
-          const ch = waterChars[Math.floor(hash(col, row + w * 100) * waterChars.length)];
-          const isCenter = Math.abs(w) <= 1;
-          const fg = isCenter ? aq.fgBright : aq.fg;
+          const row = aq.centerRow + w;
+          if (row < 0 || row > maxRow) continue;
+          const density = 0.65 - Math.abs(w) / (aq.width + 1) * 0.35;
+          if (this.terrainMap.decorHash(col * 3 + w, row * 7) > density) continue;
+          const ch = waterChars[Math.floor(this.terrainMap.decorHash(col, row + w * 100) * waterChars.length)];
+          const fg = Math.abs(w) <= 1 ? '#3a6a8a' : '#2a4a6a';
           this.asciiRenderer.setOverlay(col, row, { char: ch, fg, bg: '#101828' });
+        }
+      }
+    }
+
+    // ── Clay lenses ───────────────────────────────────────────────────
+    for (const lens of this.terrainMap.getClayLenses()) {
+      for (let col = lens.colStart; col <= lens.colEnd; col++) {
+        for (let t = -lens.thickness; t <= lens.thickness; t++) {
+          const row = lens.centerRow + t;
+          if (row < 0 || row > maxRow) continue;
+          if (this.terrainMap.decorHash(col, row + 5000) > 0.6) continue;
+          const ch = Math.abs(t) === 0 ? '=' : '-';
+          const fg = Math.abs(t) === 0 ? '#8a5a2a' : '#6a4020';
+          this.asciiRenderer.setOverlay(col, row, { char: ch, fg, bg: '#1e1208' });
         }
       }
     }
@@ -925,16 +987,16 @@ export class GameScene extends Phaser.Scene {
     const entranceChars = ['O', 'U', 'n'];
 
     // Generate 6-10 burrow systems spread across the width
-    const burrowCount = 6 + Math.floor(hash(42, 73) * 5);
+    const burrowCount = 6 + Math.floor(this.terrainMap.decorHash(42, 73) * 5);
     const spacing = Math.floor(cols / (burrowCount + 1));
 
     for (let i = 0; i < burrowCount; i++) {
       // Deterministic position for each burrow system
-      const baseCol = spacing * (i + 1) + Math.floor(hash(i * 17, 31) * spacing * 0.4) - Math.floor(spacing * 0.2);
+      const baseCol = spacing * (i + 1) + Math.floor(this.terrainMap.decorHash(i * 17, 31) * spacing * 0.4) - Math.floor(spacing * 0.2);
       if (baseCol < 3 || baseCol >= cols - 3) continue;
 
       // Entrance at ground surface (row ugStart = 21)
-      const entranceChar = entranceChars[Math.floor(hash(baseCol, 0) * entranceChars.length)];
+      const entranceChar = entranceChars[Math.floor(this.terrainMap.decorHash(baseCol, 0) * entranceChars.length)];
       this.asciiRenderer.setOverlay(baseCol, ugStart, { char: entranceChar, fg: entranceFg, bg: tunnelBg });
       // Soil disturbed around entrance
       if (baseCol > 0) {
@@ -946,35 +1008,35 @@ export class GameScene extends Phaser.Scene {
 
       // Main shaft going down from entrance — slight wander
       let curCol = baseCol;
-      const shaftDepth = 3 + Math.floor(hash(baseCol, 100) * 6); // 3-8 rows deep
+      const shaftDepth = 3 + Math.floor(this.terrainMap.decorHash(baseCol, 100) * 6); // 3-8 rows deep
       const maxRow = Math.min(ugStart + shaftDepth, ugEnd - 2);
 
       for (let row = ugStart + 1; row <= maxRow; row++) {
         // Slight horizontal wander
-        const drift = hash(curCol + row * 3, row * 7);
+        const drift = this.terrainMap.decorHash(curCol + row * 3, row * 7);
         if (drift < 0.2 && curCol > 2) curCol--;
         else if (drift > 0.8 && curCol < cols - 3) curCol++;
 
-        const ch = vTunnel[Math.floor(hash(curCol, row) * vTunnel.length)];
+        const ch = vTunnel[Math.floor(this.terrainMap.decorHash(curCol, row) * vTunnel.length)];
         this.asciiRenderer.setOverlay(curCol, row, { char: ch, fg: tunnelFg, bg: tunnelBg });
       }
 
       // Horizontal tunnels branching off the shaft
-      const branchCount = 1 + Math.floor(hash(baseCol + 5, 200) * 3); // 1-3 branches
+      const branchCount = 1 + Math.floor(this.terrainMap.decorHash(baseCol + 5, 200) * 3); // 1-3 branches
       for (let b = 0; b < branchCount; b++) {
-        const branchRow = ugStart + 2 + Math.floor(hash(baseCol + b * 11, 300 + b) * (shaftDepth - 1));
+        const branchRow = ugStart + 2 + Math.floor(this.terrainMap.decorHash(baseCol + b * 11, 300 + b) * (shaftDepth - 1));
         if (branchRow > maxRow || branchRow > ugEnd - 1) continue;
 
         // Junction mark
-        const jChar = junctions[Math.floor(hash(curCol, branchRow + b * 100) * junctions.length)];
-        const jCol = curCol + Math.floor(hash(baseCol, branchRow) * 2) - 1;
+        const jChar = junctions[Math.floor(this.terrainMap.decorHash(curCol, branchRow + b * 100) * junctions.length)];
+        const jCol = curCol + Math.floor(this.terrainMap.decorHash(baseCol, branchRow) * 2) - 1;
         if (jCol >= 0 && jCol < cols) {
           this.asciiRenderer.setOverlay(jCol, branchRow, { char: jChar, fg: chamberFg, bg: tunnelBg });
         }
 
         // Branch direction: left or right
-        const goRight = hash(baseCol + b, branchRow) > 0.5;
-        const branchLen = 4 + Math.floor(hash(baseCol + b * 7, 400 + b) * 10); // 4-13 cells
+        const goRight = this.terrainMap.decorHash(baseCol + b, branchRow) > 0.5;
+        const branchLen = 4 + Math.floor(this.terrainMap.decorHash(baseCol + b * 7, 400 + b) * 10); // 4-13 cells
         const startCol = goRight ? jCol + 1 : jCol - 1;
         const dir = goRight ? 1 : -1;
 
@@ -984,15 +1046,15 @@ export class GameScene extends Phaser.Scene {
 
           // Tunnels can wander vertically a little
           let tr = branchRow;
-          const vDrift = hash(tc * 3 + t, branchRow * 5);
+          const vDrift = this.terrainMap.decorHash(tc * 3 + t, branchRow * 5);
           if (vDrift < 0.15 && tr > ugStart + 1) tr--;
           else if (vDrift > 0.85 && tr < ugEnd) tr++;
 
-          const ch = hTunnel[Math.floor(hash(tc, tr + t * 10) * hTunnel.length)];
+          const ch = hTunnel[Math.floor(this.terrainMap.decorHash(tc, tr + t * 10) * hTunnel.length)];
           this.asciiRenderer.setOverlay(tc, tr, { char: ch, fg: tunnelFg, bg: tunnelBg });
 
           // Occasional root dangling into tunnel
-          if (tr > ugStart + 1 && hash(tc + 99, tr) < 0.08) {
+          if (tr > ugStart + 1 && this.terrainMap.decorHash(tc + 99, tr) < 0.08) {
             this.asciiRenderer.setOverlay(tc, tr - 1, { char: '\\', fg: rootFg });
           }
 
@@ -1002,18 +1064,18 @@ export class GameScene extends Phaser.Scene {
         // Chamber at the end of each branch — a small widened area
         if (tc >= 2 && tc < cols - 2 && branchRow >= ugStart + 1 && branchRow < ugEnd - 1) {
           // 3x2 or 3x3 little chamber
-          const chamberH = 2 + Math.floor(hash(tc, branchRow + 500) * 2); // 2-3 rows
+          const chamberH = 2 + Math.floor(this.terrainMap.decorHash(tc, branchRow + 500) * 2); // 2-3 rows
           for (let cr = 0; cr < chamberH; cr++) {
             for (let cc = -1; cc <= 1; cc++) {
               const cCol = tc + cc;
               const cRow = branchRow + cr;
               if (cCol < 0 || cCol >= cols || cRow < ugStart || cRow > ugEnd) continue;
-              const ch = chamberChars[Math.floor(hash(cCol + cr * 3, cRow * 7) * chamberChars.length)];
+              const ch = chamberChars[Math.floor(this.terrainMap.decorHash(cCol + cr * 3, cRow * 7) * chamberChars.length)];
               this.asciiRenderer.setOverlay(cCol, cRow, { char: ch, fg: chamberFg, bg: chamberBg });
             }
           }
           // Nest material or food cache decoration in some chambers
-          const chamberType = hash(tc + 77, branchRow + 77);
+          const chamberType = this.terrainMap.decorHash(tc + 77, branchRow + 77);
           if (chamberType < 0.4) {
             // Nest — soft materials
             this.asciiRenderer.setOverlay(tc, branchRow, { char: '@', fg: '#6a5a40', bg: chamberBg });

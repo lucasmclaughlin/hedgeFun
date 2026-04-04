@@ -95,15 +95,16 @@ export class BuildingManager {
       exteriorSet.add(`${cell.colOff},${cell.rowOff}`);
     }
 
-    // Side-view interior: all non-exterior cells inside bounding box
+    // Side-view interior: fill ALL cells inside the bounding box border,
+    // regardless of whether the user placed exterior glyphs there.
+    // The renderer priority (furniture > interior > exterior) ensures
+    // interior/furniture always shows over user-placed exterior cells.
     const interior: BuildingCell[] = [];
     const floorRow = maxRow - 1; // bottom interior row = floor
     const ceilingRow = minRow + 1; // top interior row = ceiling beams
 
-    for (let c = minCol; c <= maxCol; c++) {
-      for (let r = minRow; r <= maxRow; r++) {
-        if (exteriorSet.has(`${c},${r}`)) continue;
-
+    for (let c = minCol + 1; c < maxCol; c++) {
+      for (let r = minRow + 1; r < maxRow; r++) {
         let glyph: Glyph;
         if (r === floorRow) {
           // Floor — wooden planks
@@ -140,7 +141,7 @@ export class BuildingManager {
    */
   private generateSideViewFurniture(
     villager: VillagerDef | undefined,
-    exteriorSet: Set<string>,
+    _exteriorSet: Set<string>,
     minCol: number, maxCol: number,
     _minRow: number, floorRow: number, ceilingRow: number,
   ): FurnitureItem[] {
@@ -148,10 +149,12 @@ export class BuildingManager {
     const usedCells = new Set<string>();
     const bg = '#2a2218';
 
+    // Furniture can go anywhere inside the bounding box border.
+    // The renderer draws furniture on top of exterior cells, so this
+    // works even when the user fills the entire house with glyphs.
     const isInterior = (c: number, r: number) => {
       return r >= ceilingRow && r <= floorRow
-        && c > minCol && c < maxCol
-        && !exteriorSet.has(`${c},${r}`);
+        && c > minCol && c < maxCol;
     };
 
     const place = (id: string, col: number, row: number, glyph: Glyph, permanent = true): boolean => {

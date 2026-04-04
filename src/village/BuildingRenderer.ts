@@ -1,20 +1,17 @@
-import { BuildPhase, BuildModeState, OverlayLayer, Season } from '@/types';
+import { BuildPhase, BuildModeState, OverlayLayer, Season, GRID_CONFIG } from '@/types';
 import type { HouseState, BuildModeContext, Glyph, VillagerState, VillagerFrame } from '@/types';
 import type { AsciiRenderer } from '@/rendering/AsciiRenderer';
 import { VILLAGERS } from '@/data/villagers';
 
-/** Scaffold glyphs for a building site — looks like a staked-out plot */
-const SCAFFOLD_CORNER_TL: Glyph = { char: '+', fg: '#aa9060', bg: '#1a1610' };
-const SCAFFOLD_CORNER_TR: Glyph = { char: '+', fg: '#aa9060', bg: '#1a1610' };
-const SCAFFOLD_CORNER_BL: Glyph = { char: '+', fg: '#aa9060', bg: '#1a1610' };
-const SCAFFOLD_CORNER_BR: Glyph = { char: '+', fg: '#aa9060', bg: '#1a1610' };
-const SCAFFOLD_HORIZ: Glyph    = { char: '-', fg: '#8a7a5a', bg: '#1a1610' };
-const SCAFFOLD_VERT: Glyph     = { char: ':', fg: '#8a7a5a', bg: '#1a1610' };
-const SCAFFOLD_INTERIOR: Glyph = { char: ' ', fg: '#3a3020', bg: '#1a1610' };
-const SCAFFOLD_CENTER: Glyph   = { char: '?', fg: '#ddaa44', bg: '#1a1610' };
-
 /** Build mode cursor */
 const BUILD_CURSOR: Glyph = { char: '+', fg: '#eedd44' };
+
+/** Dark overlay for cells outside the build area */
+const BUILD_VIGNETTE: Glyph = { char: ' ', fg: '#060604', bg: '#060604' };
+
+/** Star characters that animate around the scaffold ? */
+const SPARKLE_CHARS = ['*', '+', '.', '·', '*'];
+const SPARKLE_COLORS = ['#ddaa44', '#eebb66', '#ccaa33', '#ffcc55', '#aa8833'];
 
 /**
  * Renders buildings onto the ASCII overlay grid.
@@ -31,6 +28,8 @@ export class BuildingRenderer {
   /** Animation timer for interior villager animation */
   private animTimer = 0;
   private animFrame = 0;
+  /** Accumulated time for sparkle animation (never resets) */
+  private totalTime = 0;
 
   render(
     houses: ReadonlyArray<HouseState>,
@@ -48,8 +47,9 @@ export class BuildingRenderer {
     }
     this.previousCells.clear();
 
-    // Advance interior animation timer
+    // Advance animation timers
     if (delta) {
+      this.totalTime += delta;
       this.animTimer += delta;
       if (this.animTimer > 600) {
         this.animTimer = 0;
@@ -86,33 +86,36 @@ export class BuildingRenderer {
 
   private renderScaffold(house: HouseState): void {
     const { anchorCol: ac, anchorRow: ar, width: w, height: h } = house;
+    const centerCol = ac + Math.floor(w / 2);
+    const centerRow = ar + Math.floor(h / 2);
 
-    for (let c = 0; c < w; c++) {
-      for (let r = 0; r < h; r++) {
-        const col = ac + c;
-        const row = ar + r;
-        let glyph: Glyph;
+    // Central '?' marker
+    this.renderer.setOverlay(centerCol, centerRow, { char: '?', fg: '#ddaa44' }, OverlayLayer.Building);
+    this.previousCells.add(`${centerCol},${centerRow}`);
 
-        const isTop = r === 0;
-        const isBottom = r === h - 1;
-        const isLeft = c === 0;
-        const isRight = c === w - 1;
+    // Animated sparkles in a diamond around the '?'
+    const sparklePositions: [number, number][] = [
+      [0, -1],   // top
+      [1, 0],    // right
+      [0, 1],    // bottom
+      [-1, 0],   // left
+    ];
+    const sparkleFrame = Math.floor(this.totalTime / 400);
 
-        const isCenterCol = c === Math.floor(w / 2);
-        const isCenterRow = r === Math.floor(h / 2);
+    for (let i = 0; i < sparklePositions.length; i++) {
+      const [dc, dr] = sparklePositions[i];
+      const col = centerCol + dc;
+      const row = centerRow + dr;
+      if (col < 0 || col >= GRID_CONFIG.cols || row < 0 || row >= GRID_CONFIG.rows) continue;
 
-        if ((isTop && isLeft)) glyph = SCAFFOLD_CORNER_TL;
-        else if ((isTop && isRight)) glyph = SCAFFOLD_CORNER_TR;
-        else if ((isBottom && isLeft)) glyph = SCAFFOLD_CORNER_BL;
-        else if ((isBottom && isRight)) glyph = SCAFFOLD_CORNER_BR;
-        else if (isTop || isBottom) glyph = SCAFFOLD_HORIZ;
-        else if (isLeft || isRight) glyph = SCAFFOLD_VERT;
-        else if (isCenterCol && isCenterRow) glyph = SCAFFOLD_CENTER;
-        else glyph = SCAFFOLD_INTERIOR;
+      const charIdx = (sparkleFrame + i) % SPARKLE_CHARS.length;
+      const colorIdx = (sparkleFrame + i + 2) % SPARKLE_COLORS.length;
 
-        this.renderer.setOverlay(col, row, glyph, OverlayLayer.Building);
-        this.previousCells.add(`${col},${row}`);
-      }
+      this.renderer.setOverlay(col, row, {
+        char: SPARKLE_CHARS[charIdx],
+        fg: SPARKLE_COLORS[colorIdx],
+      }, OverlayLayer.Building);
+      this.previousCells.add(`${col},${row}`);
     }
   }
 
@@ -129,7 +132,23 @@ export class BuildingRenderer {
   private renderBuildMode(house: HouseState, ctx: BuildModeContext): void {
     const { anchorCol: ac, anchorRow: ar, width: w, height: h } = house;
 
-    // Draw boundary
+    // ── Dark vignette: dim everything outside the build area ──
+    const MARGIN = 20;
+    const startCol = Math.max(0, ac - MARGIN);
+    const endCol = Math.min(GRID_CONFIG.cols - 1, ac + w - 1 + MARGIN);
+    const startRow = Math.max(0, ar - MARGIN);
+    const endRow = Math.min(GRID_CONFIG.rows - 1, ar + h - 1 + MARGIN);
+
+    for (let col = startCol; col <= endCol; col++) {
+      for (let row = startRow; row <= endRow; row++) {
+        // Skip cells inside the house boundary
+        if (col >= ac && col < ac + w && row >= ar && row < ar + h) continue;
+        this.renderer.setOverlay(col, row, BUILD_VIGNETTE, OverlayLayer.BuildUI);
+        this.previousCells.add(`${col},${row}`);
+      }
+    }
+
+    // ── Build area: boundary dots + warm interior bg ──
     for (let c = 0; c < w; c++) {
       for (let r = 0; r < h; r++) {
         const col = ac + c;
@@ -137,10 +156,12 @@ export class BuildingRenderer {
         const isEdge = c === 0 || c === w - 1 || r === 0 || r === h - 1;
 
         if (isEdge) {
-          // Subtle dotted border
-          this.renderer.setOverlay(col, row, { char: '·', fg: '#5a5a4a' }, OverlayLayer.Building);
-          this.previousCells.add(`${col},${row}`);
+          this.renderer.setOverlay(col, row, { char: '·', fg: '#6a6a4a', bg: '#12100c' }, OverlayLayer.Building);
+        } else {
+          // Warm dark interior to contrast with the vignette
+          this.renderer.setOverlay(col, row, { char: ' ', fg: '#3a3020', bg: '#14120e' }, OverlayLayer.Building);
         }
+        this.previousCells.add(`${col},${row}`);
       }
     }
 
@@ -152,12 +173,15 @@ export class BuildingRenderer {
       this.previousCells.add(`${col},${row}`);
     }
 
-    // Draw cursor
+    // Draw cursor — show selected glyph preview, or tool-specific cursor
     const cursorCol = ac + ctx.cursorCol;
     const cursorRow = ar + ctx.cursorRow;
-    const cursorGlyph = ctx.selectedGlyph
-      ? { ...ctx.selectedGlyph, bg: '#3a3a1a' }
-      : BUILD_CURSOR;
+    let cursorGlyph: Glyph;
+    if (ctx.selectedGlyph) {
+      cursorGlyph = { ...ctx.selectedGlyph, bg: '#3a3a1a' };
+    } else {
+      cursorGlyph = BUILD_CURSOR;
+    }
     this.renderer.setOverlay(cursorCol, cursorRow, cursorGlyph, OverlayLayer.BuildUI);
     this.previousCells.add(`${cursorCol},${cursorRow}`);
   }

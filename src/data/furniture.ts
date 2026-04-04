@@ -74,7 +74,6 @@ export const FURNITURE: Record<string, FurnitureDef> = {
   flour:         { id: 'flour',         name: 'Flour Sack',      glyph: { char: '%', fg: '#ccccaa' }, description: 'Acorn flour, stone-ground' },
 
   // ── Wall shelves & pantry ──
-  stove:         { id: 'stove',         name: 'Wood Stove',      glyph: { char: '#', fg: '#888888' }, description: 'Click to cook something!' },
   shelf:         { id: 'shelf',         name: 'Shelf',           glyph: { char: '-', fg: '#8a7a5a' }, description: 'A sturdy oak shelf' },
   acorn_cup:     { id: 'acorn_cup',     name: 'Acorn Cup',       glyph: { char: 'u', fg: '#aa8855' }, description: 'An acorn cap filled with dried berries' },
   dried_berries: { id: 'dried_berries', name: 'Dried Berries',   glyph: { char: ':', fg: '#cc4466' }, description: 'Strings of dried elderberries and sloes' },

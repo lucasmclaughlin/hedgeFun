@@ -66,7 +66,12 @@ export class BuildModeController {
     }
   }
 
-  // ── Palette navigation ──
+  // ── Glyph / palette ──
+
+  /** Set the selected glyph directly (used by the build panel UI) */
+  setSelectedGlyph(glyph: Glyph | null): void {
+    this.context.selectedGlyph = glyph;
+  }
 
   selectCategory(index: number): void {
     if (index >= 0 && index < BUILD_PALETTE.length) {

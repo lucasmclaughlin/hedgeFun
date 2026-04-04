@@ -14,9 +14,10 @@ import { BuildModeController } from '@/village/BuildModeController';
 import { VillagerSimulator } from '@/village/VillagerSimulator';
 import { VillagerRenderer } from '@/village/VillagerRenderer';
 import { VillageHudRenderer } from '@/ui/VillageHudRenderer';
+import { BuildPanelUI } from '@/ui/BuildPanelUI';
 import { VILLAGER_LIST } from '@/data/villagers';
 import { SPECIES_LIST } from '@/data/species';
-import type { HouseState, BuildModeContext } from '@/types';
+import type { HouseState, BuildModeContext, BuildingCell } from '@/types';
 
 /**
  * hedgeFriends — Cozy village mode.
@@ -52,6 +53,7 @@ export class VillageScene extends Phaser.Scene {
   private villagerSim!: VillagerSimulator;
   private villagerRenderer!: VillagerRenderer;
   private hudRenderer!: VillageHudRenderer;
+  private buildPanel!: BuildPanelUI;
 
   // Track hour changes for villager routines
   private lastHourIndex = -1;
@@ -75,6 +77,10 @@ export class VillageScene extends Phaser.Scene {
   // Villager arrival queue
   private nextVillagerIndex = 0;
   private villagerArrivalTimer = 0;
+
+  // Edit mode state
+  private isEditingExisting = false;
+  private exteriorBackup: BuildingCell[] | null = null;
 
   constructor() {
     super({ key: 'VillageScene' });
@@ -165,6 +171,19 @@ export class VillageScene extends Phaser.Scene {
     this.villagerSim = new VillagerSimulator();
     this.villagerRenderer = new VillagerRenderer(this.asciiRenderer);
     this.hudRenderer = new VillageHudRenderer(this);
+    this.buildPanel = new BuildPanelUI({
+      onBrushChanged: (glyph) => {
+        this.buildMode.setSelectedGlyph(glyph);
+      },
+      onSave: () => {
+        const ctx = this.buildMode.getContext();
+        const house = ctx.activeHouseId !== null ? this.buildingManager.getHouse(ctx.activeHouseId) : null;
+        if (house) this.finishBuilding(house);
+      },
+      onCancel: () => {
+        this.cancelBuildMode();
+      },
+    });
 
     // ── HUD camera (ignores zoom) ──
     this.hudCamera = this.cameras.add(0, 0, this.cameras.main.width, this.cameras.main.height);
@@ -298,12 +317,16 @@ export class VillageScene extends Phaser.Scene {
         break;
       case 'r':
       case 'R':
+        this.buildPanel.destroy();
         this.scene.start('SplashScene');
         break;
     }
   }
 
   private handleBuildModeKey(event: KeyboardEvent): void {
+    // Don't handle keys when typing in the build panel inputs
+    if (this.buildPanel.isInputFocused()) return;
+
     const ctx = this.buildMode.getContext();
     const house = ctx.activeHouseId !== null
       ? this.buildingManager.getHouse(ctx.activeHouseId)
@@ -333,9 +356,9 @@ export class VillageScene extends Phaser.Scene {
         this.buildMode.moveCursor(1, 0, house);
         break;
 
-      // Place / erase
+      // Place / erase (uses panel brush)
       case ' ':
-        this.placeGlyph(house);
+        this.placeGlyphFromPanel(house);
         break;
       case 'Backspace':
       case 'x':
@@ -346,20 +369,20 @@ export class VillageScene extends Phaser.Scene {
       // Palette: q/e browse items, Tab cycles category, 1-6 jump to category
       case 'q':
       case 'Q':
-        this.buildMode.prevItem();
+        this.buildPanel.prevChar();
         break;
       case 'e':
       case 'E':
-        this.buildMode.nextItem();
+        this.buildPanel.nextChar();
         break;
       case 'Tab':
         event.preventDefault();
-        this.buildMode.selectCategory(
-          (ctx.selectedCategory + 1) % 6,
+        this.buildPanel.selectCategory(
+          (this.buildPanel.getCategoryIndex() + 1) % 6,
         );
         break;
       case '1': case '2': case '3': case '4': case '5': case '6':
-        this.buildMode.selectCategory(parseInt(event.key) - 1);
+        this.buildPanel.selectCategory(parseInt(event.key) - 1);
         break;
 
       // Finish building
@@ -369,7 +392,7 @@ export class VillageScene extends Phaser.Scene {
 
       // Cancel
       case 'Escape':
-        this.exitBuildMode();
+        this.cancelBuildMode();
         break;
     }
   }
@@ -382,14 +405,28 @@ export class VillageScene extends Phaser.Scene {
     const ctx = this.buildMode.getContext();
 
     if (ctx.state === BuildModeState.Building) {
-      // In build mode, click to place glyph
       const house = ctx.activeHouseId !== null ? this.buildingManager.getHouse(ctx.activeHouseId) : null;
       if (house) {
         const colOff = col - house.anchorCol;
         const rowOff = row - house.anchorRow;
         if (colOff >= 0 && colOff < house.width && rowOff >= 0 && rowOff < house.height) {
           this.buildMode.setCursor(colOff, rowOff);
-          this.placeGlyph(house);
+          const tool = this.buildPanel.getActiveTool();
+          const isAlt = pointer.event.altKey;
+
+          if (isAlt || tool === 'pick') {
+            // Eyedropper: pick char+color from existing cell
+            const existing = house.exterior.find(c => c.colOff === colOff && c.rowOff === rowOff);
+            if (existing) {
+              this.buildPanel.setBrush(existing.glyph);
+            }
+            this.buildPanel.setTool('paint');
+          } else if (tool === 'erase') {
+            this.eraseGlyph(house);
+          } else {
+            // Paint tool
+            this.placeGlyphFromPanel(house);
+          }
         }
       }
       return;
@@ -419,7 +456,11 @@ export class VillageScene extends Phaser.Scene {
       if (house.phase === BuildPhase.SiteMarked) {
         this.enterBuildMode(house);
       } else if (house.phase === BuildPhase.Complete) {
-        this.enterInteriorView(house);
+        if (pointer.event.shiftKey) {
+          this.enterEditMode(house);
+        } else {
+          this.enterInteriorView(house);
+        }
       }
     }
   }
@@ -508,27 +549,66 @@ export class VillageScene extends Phaser.Scene {
 
   private enterBuildMode(house: HouseState): void {
     house.phase = BuildPhase.Building;
+    this.isEditingExisting = false;
+    this.exteriorBackup = null;
     this.buildMode.enterBuildMode(house.id);
     this.buildMode.setCursor(Math.floor(house.width / 2), Math.floor(house.height / 2));
 
-    // Save current camera state
     this.savedZoom = this.cameras.main.zoom;
     this.savedScrollX = this.cameras.main.scrollX;
     this.savedScrollY = this.cameras.main.scrollY;
 
     this.zoomToRegion(house.anchorCol, house.anchorRow, house.width, house.height);
-    this.hudRenderer.showMessage('Design the house! Q/E: items, Tab: category, space: place, Enter: save');
+    // Offset camera left to account for the build panel (224px wide)
+    this.cameras.main.scrollX -= 112 / this.cameras.main.zoom;
+    this.buildPanel.show();
+    this.buildPanel.setTool('paint');
+    this.buildMode.setSelectedGlyph(this.buildPanel.getCurrentGlyph());
+    this.hudRenderer.showMessage('Design the house!');
   }
 
-  private exitBuildMode(): void {
+  private enterEditMode(house: HouseState): void {
+    // Save backup for cancel
+    this.exteriorBackup = house.exterior.map(c => ({ ...c, glyph: { ...c.glyph } }));
+    this.isEditingExisting = true;
+
+    house.phase = BuildPhase.Building;
+    this.buildMode.enterBuildMode(house.id);
+    this.buildMode.setCursor(Math.floor(house.width / 2), Math.floor(house.height / 2));
+
+    this.savedZoom = this.cameras.main.zoom;
+    this.savedScrollX = this.cameras.main.scrollX;
+    this.savedScrollY = this.cameras.main.scrollY;
+
+    this.zoomToRegion(house.anchorCol, house.anchorRow, house.width, house.height);
+    this.cameras.main.scrollX -= 112 / this.cameras.main.zoom;
+    this.buildPanel.show();
+    this.buildPanel.setTool('paint');
+
+    // Set initial brush from first exterior cell if any
+    if (house.exterior.length > 0) {
+      this.buildPanel.setBrush(house.exterior[0].glyph);
+    }
+    this.buildMode.setSelectedGlyph(this.buildPanel.getCurrentGlyph());
+    this.hudRenderer.showMessage('Edit the house exterior!');
+  }
+
+  private cancelBuildMode(): void {
     const ctx = this.buildMode.getContext();
     const house = ctx.activeHouseId !== null ? this.buildingManager.getHouse(ctx.activeHouseId) : null;
     if (house) {
-      house.phase = BuildPhase.SiteMarked;
-      // Clear any placed exterior cells so they can start fresh
-      house.exterior = [];
+      if (this.isEditingExisting && this.exteriorBackup) {
+        house.exterior = this.exteriorBackup;
+        house.phase = BuildPhase.Complete;
+      } else {
+        house.phase = BuildPhase.SiteMarked;
+        house.exterior = [];
+      }
     }
+    this.isEditingExisting = false;
+    this.exteriorBackup = null;
     this.buildMode.exitBuildMode();
+    this.buildPanel.hide();
     this.zoomOut();
   }
 
@@ -538,14 +618,21 @@ export class VillageScene extends Phaser.Scene {
       return;
     }
     house.phase = BuildPhase.Complete;
-    // Generate interior from exterior shape
     this.buildingManager.generateInterior(house);
-    // Register the villager with the simulator
-    this.villagerSim.addVillager(house);
+
+    if (!this.isEditingExisting) {
+      this.villagerSim.addVillager(house);
+      const villager = VILLAGER_LIST.find(v => v.id === house.villagerId);
+      this.hudRenderer.showMessage(`${villager?.name ?? 'A villager'} moves in!`);
+    } else {
+      this.hudRenderer.showMessage('House updated!');
+    }
+
+    this.isEditingExisting = false;
+    this.exteriorBackup = null;
     this.buildMode.exitBuildMode();
+    this.buildPanel.hide();
     this.zoomOut();
-    const villager = VILLAGER_LIST.find(v => v.id === house.villagerId);
-    this.hudRenderer.showMessage(`${villager?.name ?? 'A villager'} moves in!`);
   }
 
   private enterInteriorView(house: HouseState): void {
@@ -576,16 +663,16 @@ export class VillageScene extends Phaser.Scene {
 
   // ── Glyph placement ──
 
-  private placeGlyph(house: HouseState): void {
+  /** Place the build panel's current brush at the cursor position */
+  private placeGlyphFromPanel(house: HouseState): void {
     const ctx = this.buildMode.getContext();
-    if (!ctx.selectedGlyph) return;
+    const glyph = this.buildPanel.getCurrentGlyph();
+    if (!glyph.char) return;
 
     const colOff = ctx.cursorCol;
     const rowOff = ctx.cursorRow;
-
-    // Remove any existing cell at this position
     house.exterior = house.exterior.filter(c => !(c.colOff === colOff && c.rowOff === rowOff));
-    house.exterior.push({ colOff, rowOff, glyph: { ...ctx.selectedGlyph } });
+    house.exterior.push({ colOff, rowOff, glyph: { ...glyph } });
   }
 
   private eraseGlyph(house: HouseState): void {

@@ -1,7 +1,6 @@
 import Phaser from 'phaser';
 import { Season, BuildModeState, BuildPhase, DAY_HOUR_NAMES } from '@/types';
 import type { TimePeriod, Weather, BuildModeContext, HouseState, VillagerDef, FurnitureItem } from '@/types';
-import { BUILD_PALETTE } from '@/data/buildPalette';
 import { VILLAGERS } from '@/data/villagers';
 import { FURNITURE } from '@/data/furniture';
 
@@ -132,7 +131,7 @@ export class VillageHudRenderer {
     const siteCount = houses.filter(h => h.phase === BuildPhase.SiteMarked).length;
 
     if (buildCtx.state === BuildModeState.Building) {
-      this.modeText.setText('BUILD MODE — Q/E: item  Tab/1-6: category  WASD: move  Space: place  Enter: save  Esc: cancel');
+      this.modeText.setText('BUILD MODE — Click to place, WASD: move cursor');
       this.modeText.setColor('#eedd44');
     } else if (buildCtx.state === BuildModeState.ViewingInterior) {
       const house = houses.find(h => h.id === buildCtx.activeHouseId);
@@ -153,39 +152,13 @@ export class VillageHudRenderer {
       this.modeText.setColor('#aaccaa');
     }
 
-    // ── Palette (build mode only) ──
+    // ── Palette info (build mode only — panel handles the full palette now) ──
     if (buildCtx.state === BuildModeState.Building) {
-      const cat = BUILD_PALETTE[buildCtx.selectedCategory];
-      // Category tabs
-      let paletteStr = '  ';
-      for (let i = 0; i < BUILD_PALETTE.length; i++) {
-        const c = BUILD_PALETTE[i];
-        if (i === buildCtx.selectedCategory) {
-          paletteStr += `[${i + 1} ${c.name}] `;
-        } else {
-          paletteStr += ` ${i + 1} ${c.name}  `;
-        }
-      }
-      // Items row
-      paletteStr += '\n  ';
-      if (cat) {
-        for (let i = 0; i < cat.items.length; i++) {
-          const item = cat.items[i];
-          if (i === buildCtx.selectedIndex) {
-            paletteStr += ` [${item.char}] `;
-          } else {
-            paletteStr += `  ${item.char}  `;
-          }
-        }
-      }
-      // Cursor position + placed count
       const house = houses.find(h => h.id === buildCtx.activeHouseId);
       const placedCount = house ? house.exterior.length : 0;
-      paletteStr += `      ${placedCount} placed`;
-
-      this.paletteText.setText(paletteStr);
-      this.paletteText.setY(cam.height - 55);
-      this.paletteText.setAlpha(1);
+      this.paletteText.setText(`  ${placedCount} placed  |  cursor: ${buildCtx.cursorCol},${buildCtx.cursorRow}`);
+      this.paletteText.setY(cam.height - 30);
+      this.paletteText.setAlpha(0.7);
     } else {
       this.paletteText.setAlpha(0);
     }
@@ -205,7 +178,7 @@ export class VillageHudRenderer {
       if (this.hoveredHouse.phase === BuildPhase.Complete) {
         const activity = this.hoveredActivity
           ?? this.hoveredVillager.dailyRoutine[Math.floor(dayHour)] ?? 'pottering about';
-        tip += ` — ${activity}`;
+        tip += ` — ${activity}  (Shift+Click: edit)`;
       } else if (this.hoveredHouse.phase === BuildPhase.SiteMarked) {
         tip += ' — looking for a home! (click to build)';
       } else if (this.hoveredHouse.phase === BuildPhase.Building) {

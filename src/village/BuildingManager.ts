@@ -90,11 +90,6 @@ export class BuildingManager {
       maxRow = Math.max(maxRow, cell.rowOff);
     }
 
-    const exteriorSet = new Set<string>();
-    for (const cell of house.exterior) {
-      exteriorSet.add(`${cell.colOff},${cell.rowOff}`);
-    }
-
     // Side-view interior: fill ALL cells inside the bounding box border,
     // regardless of whether the user placed exterior glyphs there.
     // The renderer priority (furniture > interior > exterior) ensures
@@ -128,7 +123,7 @@ export class BuildingManager {
 
     // Place furniture in side-view layout
     const furniture = this.generateSideViewFurniture(
-      villager, exteriorSet, minCol, maxCol, minRow, floorRow, ceilingRow,
+      villager, minCol, maxCol, minRow, floorRow, ceilingRow,
     );
 
     house.interior = interior;
@@ -141,7 +136,6 @@ export class BuildingManager {
    */
   private generateSideViewFurniture(
     villager: VillagerDef | undefined,
-    _exteriorSet: Set<string>,
     minCol: number, maxCol: number,
     _minRow: number, floorRow: number, ceilingRow: number,
   ): FurnitureItem[] {

@@ -548,30 +548,22 @@ export class VillageScene extends Phaser.Scene {
   // ── Build mode transitions ──
 
   private enterBuildMode(house: HouseState): void {
-    house.phase = BuildPhase.Building;
     this.isEditingExisting = false;
     this.exteriorBackup = null;
-    this.buildMode.enterBuildMode(house.id);
-    this.buildMode.setCursor(Math.floor(house.width / 2), Math.floor(house.height / 2));
-
-    this.savedZoom = this.cameras.main.zoom;
-    this.savedScrollX = this.cameras.main.scrollX;
-    this.savedScrollY = this.cameras.main.scrollY;
-
-    this.zoomToRegion(house.anchorCol, house.anchorRow, house.width, house.height);
-    // Offset camera left to account for the build panel (224px wide)
-    this.cameras.main.scrollX -= 112 / this.cameras.main.zoom;
-    this.buildPanel.show();
-    this.buildPanel.setTool('paint');
-    this.buildMode.setSelectedGlyph(this.buildPanel.getCurrentGlyph());
-    this.hudRenderer.showMessage('Design the house!');
+    this.openBuildUI(house, 'Design the house!');
   }
 
   private enterEditMode(house: HouseState): void {
-    // Save backup for cancel
     this.exteriorBackup = house.exterior.map(c => ({ ...c, glyph: { ...c.glyph } }));
     this.isEditingExisting = true;
+    this.openBuildUI(house, 'Edit the house exterior!');
+    if (house.exterior.length > 0) {
+      this.buildPanel.setBrush(house.exterior[0].glyph);
+      this.buildMode.setSelectedGlyph(this.buildPanel.getCurrentGlyph());
+    }
+  }
 
+  private openBuildUI(house: HouseState, message: string): void {
     house.phase = BuildPhase.Building;
     this.buildMode.enterBuildMode(house.id);
     this.buildMode.setCursor(Math.floor(house.width / 2), Math.floor(house.height / 2));
@@ -584,13 +576,8 @@ export class VillageScene extends Phaser.Scene {
     this.cameras.main.scrollX -= 112 / this.cameras.main.zoom;
     this.buildPanel.show();
     this.buildPanel.setTool('paint');
-
-    // Set initial brush from first exterior cell if any
-    if (house.exterior.length > 0) {
-      this.buildPanel.setBrush(house.exterior[0].glyph);
-    }
     this.buildMode.setSelectedGlyph(this.buildPanel.getCurrentGlyph());
-    this.hudRenderer.showMessage('Edit the house exterior!');
+    this.hudRenderer.showMessage(message);
   }
 
   private cancelBuildMode(): void {

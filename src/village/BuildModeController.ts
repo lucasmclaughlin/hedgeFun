@@ -1,6 +1,5 @@
 import { BuildModeState } from '@/types';
 import type { BuildModeContext, HouseState, Glyph } from '@/types';
-import { BUILD_PALETTE } from '@/data/buildPalette';
 
 /**
  * State machine for build mode: palette navigation, cursor movement, glyph selection.
@@ -31,7 +30,7 @@ export class BuildModeController {
     this.context.activeHouseId = houseId;
     this.context.selectedCategory = 0;
     this.context.selectedIndex = 0;
-    this.context.selectedGlyph = BUILD_PALETTE[0].items[0] ?? null;
+    this.context.selectedGlyph = null;
   }
 
   exitBuildMode(): void {
@@ -73,26 +72,4 @@ export class BuildModeController {
     this.context.selectedGlyph = glyph;
   }
 
-  selectCategory(index: number): void {
-    if (index >= 0 && index < BUILD_PALETTE.length) {
-      this.context.selectedCategory = index;
-      this.context.selectedIndex = 0;
-      this.context.selectedGlyph = BUILD_PALETTE[index].items[0] ?? null;
-    }
-  }
-
-  nextItem(): void {
-    const cat = BUILD_PALETTE[this.context.selectedCategory];
-    if (!cat) return;
-    this.context.selectedIndex = (this.context.selectedIndex + 1) % cat.items.length;
-    this.context.selectedGlyph = cat.items[this.context.selectedIndex];
-  }
-
-  prevItem(): void {
-    const cat = BUILD_PALETTE[this.context.selectedCategory];
-    if (!cat) return;
-    this.context.selectedIndex =
-      (this.context.selectedIndex - 1 + cat.items.length) % cat.items.length;
-    this.context.selectedGlyph = cat.items[this.context.selectedIndex];
-  }
 }

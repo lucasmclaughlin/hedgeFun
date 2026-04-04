@@ -65,6 +65,7 @@ export const FURNITURE: Record<string, FurnitureDef> = {
   flower:        { id: 'flower',        name: 'Dried Flowers',   glyph: { char: '*', fg: '#ddaa88' }, description: 'A posy of hedgerow blooms' },
 
   // ── Interior fixtures ──
+  fire_glow:     { id: 'fire_glow',     name: 'Firelight',       glyph: { char: '^', fg: '#ee8833' }, description: 'Warm flickering flames' },
   bookshelf2:    { id: 'bookshelf2',    name: 'Bookshelf',       glyph: { char: '[', fg: '#997755' }, description: 'Overflowing with almanacs' },
   lamp:          { id: 'lamp',          name: 'Oil Lamp',        glyph: { char: '?', fg: '#eebb44' }, description: 'A warm steady flame' },
   quill:         { id: 'quill',         name: 'Quill Pen',       glyph: { char: '/', fg: '#8888aa' }, description: 'A goose feather quill' },

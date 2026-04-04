@@ -58,60 +58,121 @@ export class VillagerSimulator {
     const def = VILLAGERS[house.villagerId];
     if (!def) return;
 
+    // Interior floor row is the second-to-last row of the house (side view)
+    const floorRow = house.height - 2;
+    const centerCol = Math.floor(house.width / 2);
+
     this.villagers.push({
       defId: house.villagerId,
       houseId: house.id,
       activity: def.dailyRoutine[0] ?? 'pottering about',
-      col: house.anchorCol + Math.floor(house.width / 2),
-      row: house.anchorRow + Math.floor(house.height / 2),
+      col: house.anchorCol + centerCol,
+      row: house.anchorRow + floorRow,
       isHome: true,
       visitingHouseId: null,
       facing: 1,
       frameIndex: 0,
       animTimer: 0,
       moveTimer: 0,
+      interiorCol: centerCol,
+      interiorRow: floorRow,
+      interiorTargetCol: centerCol,
+      interiorTargetRow: floorRow,
+      interiorMoveTimer: 0,
     });
   }
 
   /**
-   * Called each frame — handles movement animation for walking villagers.
+   * Called each frame — handles movement for walking villagers and interior wandering.
    */
   updateVillagers(delta: number, houses: ReadonlyArray<HouseState>): void {
     for (const v of this.villagers) {
-      // Skip villagers that are settled (at home or arrived at neighbor's)
-      if (v.isHome) continue;
+      if (v.isHome) {
+        // Interior wandering — move along the floor row
+        this.updateInteriorMovement(v, delta, houses);
+        continue;
+      }
 
-      // Walking to a destination
+      // Walking to a destination (between houses)
       v.moveTimer += delta;
       if (v.moveTimer < 200) continue;
       v.moveTimer = 0;
 
-      // Determine target: visiting someone, or walking home?
       const targetHouseId = v.visitingHouseId ?? v.houseId;
       const targetHouse = houses.find(h => h.id === targetHouseId);
       if (!targetHouse) continue;
 
       const targetCol = targetHouse.anchorCol + Math.floor(targetHouse.width / 2);
-      const targetRow = targetHouse.anchorRow + Math.floor(targetHouse.height / 2);
+      const targetRow = targetHouse.anchorRow + targetHouse.height - 2;
 
-      // Move toward target
       if (v.col < targetCol) { v.col++; v.facing = 1; }
       else if (v.col > targetCol) { v.col--; v.facing = -1; }
       if (v.row < targetRow) v.row++;
       else if (v.row > targetRow) v.row--;
 
-      // Arrived?
       if (v.col === targetCol && v.row === targetRow) {
         v.isHome = true;
+        // Reset interior position to center of floor
+        const house = houses.find(h => h.id === v.houseId);
+        if (house) {
+          v.interiorCol = Math.floor(house.width / 2);
+          v.interiorRow = house.height - 2;
+          v.interiorTargetCol = v.interiorCol;
+          v.interiorTargetRow = v.interiorRow;
+        }
       }
 
-      // Animation
       v.animTimer += delta;
       if (v.animTimer > 300) {
         v.animTimer = 0;
         v.frameIndex = (v.frameIndex + 1) % 2;
       }
     }
+  }
+
+  /**
+   * Move villager around inside their home (side-view: wander along floor).
+   */
+  private updateInteriorMovement(v: VillagerState, delta: number, houses: ReadonlyArray<HouseState>): void {
+    // Don't move if sleeping
+    const isSleeping = v.activity.toLowerCase().includes('snoozing')
+      || v.activity.toLowerCase().includes('dozing');
+    if (isSleeping) return;
+
+    const house = houses.find(h => h.id === (v.visitingHouseId ?? v.houseId));
+    if (!house) return;
+
+    v.interiorMoveTimer += delta;
+
+    // Pick a new target periodically
+    if (v.interiorCol === v.interiorTargetCol && v.interiorRow === v.interiorTargetRow) {
+      // At target — wait a bit then pick a new one
+      if (v.interiorMoveTimer > 1500 + Math.random() * 2000) {
+        v.interiorMoveTimer = 0;
+        const floorRow = house.height - 2;
+        // Wander to a random column on the floor (avoid walls)
+        const minC = 1;
+        const maxC = house.width - 2;
+        v.interiorTargetCol = minC + Math.floor(Math.random() * (maxC - minC + 1));
+        v.interiorTargetRow = floorRow;
+      }
+      return;
+    }
+
+    // Move toward target every 400ms
+    if (v.interiorMoveTimer < 400) return;
+    v.interiorMoveTimer = 0;
+
+    if (v.interiorCol < v.interiorTargetCol) {
+      v.interiorCol++;
+      v.facing = 1;
+    } else if (v.interiorCol > v.interiorTargetCol) {
+      v.interiorCol--;
+      v.facing = -1;
+    }
+
+    // Animate
+    v.frameIndex = (v.frameIndex + 1) % 2;
   }
 
   /**

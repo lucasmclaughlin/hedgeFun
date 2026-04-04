@@ -445,20 +445,19 @@ export class VillageScene extends Phaser.Scene {
         }
         this.hudRenderer.setHoveredItem(null);
 
-        // Check if hovering the villager (at center of house)
-        const centerCol = Math.floor(house.width / 2);
-        const centerRow = Math.floor(house.height / 2);
+        // Check if hovering the villager (at their tracked interior position)
         const villagerState = this.villagerSim.getVillagerForHouse(house.id);
         if (villagerState && villagerState.isHome) {
           const def = VILLAGER_LIST.find(v => v.id === house.villagerId);
           if (def) {
-            // Check if mouse is on any cell of the villager's current frame
             const isSleeping = villagerState.activity.toLowerCase().includes('snoozing')
               || villagerState.activity.toLowerCase().includes('dozing');
             const frame = isSleeping ? def.sleepFrame : def.idleFrames[0];
-            const isOnVillager = frame.cells.some(
-              ([co, ro]) => colOff === centerCol + co && rowOff === centerRow + ro,
-            );
+            const isOnVillager = frame.cells.some(([co, ro]) => {
+              const actualCo = villagerState.facing < 0 ? -co : co;
+              return colOff === villagerState.interiorCol + actualCo
+                && rowOff === villagerState.interiorRow + ro;
+            });
             if (isOnVillager) {
               const hourIndex = this.timeClock.getDayHourIndex();
               const activity = this.villagerSim.getActivityDescription(house.id, hourIndex);

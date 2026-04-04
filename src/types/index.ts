@@ -519,6 +519,14 @@ export interface VillagerState {
   frameIndex: number;
   animTimer: number;
   moveTimer: number;
+  /** Interior position: offset within house (for moving around inside) */
+  interiorCol: number;
+  interiorRow: number;
+  /** Target interior position to wander toward */
+  interiorTargetCol: number;
+  interiorTargetRow: number;
+  /** Timer for interior movement */
+  interiorMoveTimer: number;
 }
 
 /** Build mode context */

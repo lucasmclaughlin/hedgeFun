@@ -71,7 +71,9 @@ export class BuildingManager {
   }
 
   /**
-   * Generate interior from exterior shell and villager personality.
+   * Generate side-view interior from exterior shell and villager personality.
+   * Layout: ceiling at top, back wall in middle rows, floor at bottom.
+   * Furniture sits on the floor or hangs on the back wall.
    */
   generateInterior(house: HouseState): void {
     if (house.exterior.length === 0) return;
@@ -88,145 +90,164 @@ export class BuildingManager {
       maxRow = Math.max(maxRow, cell.rowOff);
     }
 
-    // Exterior cell lookup
     const exteriorSet = new Set<string>();
     for (const cell of house.exterior) {
       exteriorSet.add(`${cell.colOff},${cell.rowOff}`);
     }
 
-    // Floor tiles for the interior (everything inside bounding box not a wall)
+    // Side-view interior: all non-exterior cells inside bounding box
     const interior: BuildingCell[] = [];
-    const floorCells: Array<{ col: number; row: number }> = [];
+    const floorRow = maxRow - 1; // bottom interior row = floor
+    const ceilingRow = minRow + 1; // top interior row = ceiling beams
 
     for (let c = minCol; c <= maxCol; c++) {
       for (let r = minRow; r <= maxRow; r++) {
-        if (!exteriorSet.has(`${c},${r}`)) {
-          // Vary floor tile slightly
-          const hash = ((c * 7 + r * 13) % 3);
-          const floorChar = hash === 0 ? '.' : hash === 1 ? '·' : ' ';
-          const floorFg = hash === 0 ? '#5a4a30' : '#4a3a28';
-          interior.push({
-            colOff: c, rowOff: r,
-            glyph: { char: floorChar, fg: floorFg, bg: '#2a2218' },
-          });
-          floorCells.push({ col: c, row: r });
+        if (exteriorSet.has(`${c},${r}`)) continue;
+
+        let glyph: Glyph;
+        if (r === floorRow) {
+          // Floor — wooden planks
+          const hash = (c * 7) % 3;
+          const ch = hash === 0 ? '=' : hash === 1 ? '-' : '=';
+          glyph = { char: ch, fg: '#6a5a3a', bg: '#2a2218' };
+        } else if (r === ceilingRow) {
+          // Ceiling beams
+          const ch = (c % 4 === 0) ? '+' : '-';
+          glyph = { char: ch, fg: '#5a4a30', bg: '#1e1a12' };
+        } else {
+          // Back wall — warm paneling
+          const hash = ((c * 3 + r * 7) % 5);
+          const ch = hash === 0 ? '|' : hash === 1 ? ':' : ' ';
+          const fg = hash < 2 ? '#3a3020' : '#2a2218';
+          glyph = { char: ch, fg, bg: '#2a2218' };
         }
+        interior.push({ colOff: c, rowOff: r, glyph });
       }
     }
 
-    // Place furniture by personality
-    const furniture = this.generatePersonalityFurniture(
-      villager, floorCells, exteriorSet, minCol, maxCol, minRow, maxRow,
+    // Place furniture in side-view layout
+    const furniture = this.generateSideViewFurniture(
+      villager, exteriorSet, minCol, maxCol, minRow, floorRow, ceilingRow,
     );
 
     house.interior = interior;
     house.furniture = furniture;
   }
 
-  private generatePersonalityFurniture(
+  /**
+   * Place furniture in side-view: large items on floor row, wall items above,
+   * small items on shelves (floor - 1 row).
+   */
+  private generateSideViewFurniture(
     villager: VillagerDef | undefined,
-    floorCells: Array<{ col: number; row: number }>,
     exteriorSet: Set<string>,
     minCol: number, maxCol: number,
-    minRow: number, maxRow: number,
+    minRow: number, floorRow: number, ceilingRow: number,
   ): FurnitureItem[] {
     const furniture: FurnitureItem[] = [];
-    if (floorCells.length === 0) return furniture;
-
-    const floorSet = new Set(floorCells.map(c => `${c.col},${c.row}`));
     const usedCells = new Set<string>();
+    const bg = '#2a2218';
+
+    const isFloor = (c: number, r: number) => {
+      return r >= ceilingRow && r <= floorRow
+        && c > minCol && c < maxCol
+        && !exteriorSet.has(`${c},${r}`);
+    };
 
     const place = (id: string, col: number, row: number, glyph: Glyph, permanent = true): boolean => {
       const key = `${col},${row}`;
-      if (!floorSet.has(key) || usedCells.has(key)) return false;
+      if (usedCells.has(key) || !isFloor(col, row)) return false;
       usedCells.add(key);
       furniture.push({ id, colOff: col, rowOff: row, glyph, permanent });
       return true;
     };
 
-    // Helper: find cells along a wall edge (adjacent to exterior)
-    const leftWallCells = floorCells.filter(c =>
-      c.col === minCol + 1 || exteriorSet.has(`${c.col - 1},${c.row}`),
-    );
-    const rightWallCells = floorCells.filter(c =>
-      c.col === maxCol - 1 || exteriorSet.has(`${c.col + 1},${c.row}`),
-    );
-    const topWallCells = floorCells.filter(c =>
-      c.row === minRow + 1 || exteriorSet.has(`${c.col},${c.row - 1}`),
-    );
-
+    // Side-view positions
+    const leftCol = minCol + 1;    // leftmost interior column
+    const rightCol = maxCol - 1;   // rightmost interior column
+    const shelfRow = floorRow - 1; // row above floor for table-top items
+    const wallRow = floorRow - 2;  // higher row for wall-mounted items
     const centerCol = Math.floor((minCol + maxCol) / 2);
-    const centerRow = Math.floor((minRow + maxRow) / 2);
 
     // ── Common to all: fireplace on left wall ──
-    if (leftWallCells.length > 0) {
-      const spot = leftWallCells[Math.floor(leftWallCells.length / 2)];
-      place('fireplace', spot.col, spot.row, { char: '#', fg: '#dd6633', bg: '#3a1a0a' });
+    place('fireplace', leftCol, floorRow, { char: '#', fg: '#dd6633', bg: '#3a1a0a' });
+    // Fire glow above
+    if (wallRow >= ceilingRow) {
+      place('fire_glow', leftCol, shelfRow, { char: '^', fg: '#ee8833', bg: '#3a1a0a' });
     }
 
     const personality = villager?.personality ?? VillagerPersonality.Cozy;
 
     switch (personality) {
       case VillagerPersonality.Cozy:
-        // Armchair, rug, cushion, teapot
-        place('armchair', centerCol, centerRow, { char: '&', fg: '#bb8855', bg: '#2a2218' });
-        place('rug', centerCol, centerRow + 1, { char: '~', fg: '#994433', bg: '#2a2218' });
-        place('cushion', centerCol + 1, centerRow, { char: 'o', fg: '#cc6666', bg: '#2a2218' });
-        if (topWallCells.length > 0) {
-          const s = topWallCells[topWallCells.length - 1];
-          place('teapot', s.col, s.row, { char: '$', fg: '#ddaa66', bg: '#2a2218' });
+        // Armchair by fire, rug on floor, teapot on shelf, cushion, quilt
+        place('armchair', leftCol + 1, floorRow, { char: '&', fg: '#bb8855', bg });
+        place('rug', centerCol, floorRow, { char: '~', fg: '#994433', bg });
+        place('cushion', centerCol + 1, floorRow, { char: 'o', fg: '#cc6666', bg });
+        place('teapot', rightCol, shelfRow, { char: '$', fg: '#ddaa66', bg });
+        place('quilt', rightCol, floorRow, { char: '%', fg: '#aa6644', bg }, false);
+        // Wall shelf with kettle
+        if (wallRow >= ceilingRow) {
+          place('kettle', rightCol - 1, wallRow, { char: '$', fg: '#cc8844', bg });
         }
-        place('quilt', centerCol - 1, centerRow + 1, { char: '%', fg: '#aa6644', bg: '#2a2218' }, false);
         break;
 
       case VillagerPersonality.Bookish:
-        // Bookshelf, desk, reading lamp, quill
-        if (rightWallCells.length > 1) {
-          place('bookshelf', rightWallCells[0].col, rightWallCells[0].row, { char: ']', fg: '#aa7755', bg: '#2a2218' });
-          place('bookshelf2', rightWallCells[1].col, rightWallCells[1].row, { char: '[', fg: '#997755', bg: '#2a2218' });
+        // Bookshelves against right wall, desk center, lamp above
+        place('bookshelf', rightCol, floorRow, { char: ']', fg: '#aa7755', bg });
+        place('bookshelf2', rightCol, shelfRow, { char: ']', fg: '#997755', bg });
+        place('desk', centerCol, floorRow, { char: '_', fg: '#aa8855', bg });
+        place('lamp', centerCol, shelfRow, { char: '?', fg: '#eebb44', bg });
+        place('quill', centerCol + 1, floorRow, { char: '/', fg: '#8888aa', bg });
+        place('spectacles', centerCol - 1, floorRow, { char: '8', fg: '#aaaacc', bg }, false);
+        // Books on wall
+        if (wallRow >= ceilingRow) {
+          place('notebook', rightCol - 1, wallRow, { char: '=', fg: '#aa8866', bg }, false);
         }
-        place('desk', centerCol, centerRow, { char: '_', fg: '#aa8855', bg: '#2a2218' });
-        place('lamp', centerCol + 1, centerRow - 1, { char: '?', fg: '#eebb44', bg: '#2a2218' });
-        place('quill', centerCol + 1, centerRow, { char: '/', fg: '#8888aa', bg: '#2a2218' });
-        place('spectacles', centerCol - 1, centerRow, { char: '8', fg: '#aaaacc', bg: '#2a2218' }, false);
         break;
 
       case VillagerPersonality.Culinary:
-        // Stove, table, kettle, jam jars, pie
-        place('stove', centerCol - 1, minRow + 1, { char: '#', fg: '#888888', bg: '#2a1a1a' });
-        place('table', centerCol, centerRow, { char: '=', fg: '#aa8855', bg: '#2a2218' });
-        place('kettle', centerCol + 1, centerRow - 1, { char: '$', fg: '#cc8844', bg: '#2a2218' });
-        place('jam_jar', centerCol + 1, centerRow, { char: 'o', fg: '#cc4466', bg: '#2a2218' });
-        place('pie', centerCol, centerRow - 1, { char: 'n', fg: '#ddaa66', bg: '#2a2218' }, false);
-        place('flour', centerCol - 1, centerRow, { char: '%', fg: '#ccccaa', bg: '#2a2218' }, false);
+        // Stove left, table center, kettle/pie on shelves, jam on floor
+        place('stove', leftCol + 1, floorRow, { char: '#', fg: '#888888', bg: '#2a1a1a' });
+        place('table', centerCol, floorRow, { char: '=', fg: '#aa8855', bg });
+        place('kettle', leftCol + 1, shelfRow, { char: '$', fg: '#cc8844', bg });
+        place('pie', centerCol, shelfRow, { char: 'n', fg: '#ddaa66', bg }, false);
+        place('jam_jar', rightCol, floorRow, { char: 'o', fg: '#cc4466', bg });
+        place('flour', rightCol - 1, floorRow, { char: '%', fg: '#ccccaa', bg }, false);
+        // Hanging pots on wall
+        if (wallRow >= ceilingRow) {
+          place('cake_stand', centerCol + 1, wallRow, { char: 'T', fg: '#ccaa88', bg }, false);
+        }
         break;
 
       case VillagerPersonality.Crafty:
-        // Workbench, yarn basket, needle cushion, thimble
-        place('workbench', centerCol, centerRow, { char: '=', fg: '#aa8855', bg: '#2a2218' });
-        place('yarn', centerCol - 1, centerRow + 1, { char: '@', fg: '#cc6688', bg: '#2a2218' });
-        place('needle_cushion', centerCol + 1, centerRow, { char: 'o', fg: '#dd8866', bg: '#2a2218' });
-        place('scissors', centerCol, centerRow - 1, { char: 'X', fg: '#aaaacc', bg: '#2a2218' });
-        if (rightWallCells.length > 0) {
-          place('fabric', rightWallCells[0].col, rightWallCells[0].row, { char: '%', fg: '#88aacc', bg: '#2a2218' }, false);
+        // Workbench center, yarn left, fabric right
+        place('workbench', centerCol, floorRow, { char: '=', fg: '#aa8855', bg });
+        place('yarn', leftCol + 1, floorRow, { char: '@', fg: '#cc6688', bg });
+        place('needle_cushion', centerCol + 1, floorRow, { char: 'o', fg: '#dd8866', bg });
+        place('scissors', centerCol, shelfRow, { char: 'X', fg: '#aaaacc', bg });
+        place('fabric', rightCol, floorRow, { char: '%', fg: '#88aacc', bg }, false);
+        place('thimble', rightCol - 1, floorRow, { char: 'u', fg: '#ccaa88', bg }, false);
+        // Ribbon on wall
+        if (wallRow >= ceilingRow) {
+          place('ribbon_spool', rightCol, wallRow, { char: '@', fg: '#cc88aa', bg }, false);
         }
-        place('thimble', centerCol + 1, centerRow + 1, { char: 'u', fg: '#ccaa88', bg: '#2a2218' }, false);
         break;
 
       case VillagerPersonality.Gardener:
-        // Plant pots, watering can, seed box, herb spiral
-        place('plant_pot', centerCol, centerRow - 1, { char: 'Y', fg: '#5aaa4a', bg: '#2a2218' });
-        place('plant_pot2', centerCol + 1, centerRow - 1, { char: 'Y', fg: '#6aba5a', bg: '#2a2218' });
-        place('watering_can', centerCol - 1, centerRow, { char: 'J', fg: '#88aacc', bg: '#2a2218' });
-        place('seed_box', centerCol, centerRow, { char: '[', fg: '#aa8855', bg: '#2a2218' });
-        place('herbs', centerCol + 1, centerRow + 1, { char: '{', fg: '#4a8a3a', bg: '#2a2218' }, false);
-        if (topWallCells.length > 0) {
-          place('flower', topWallCells[0].col, topWallCells[0].row, { char: '*', fg: '#ddaa88', bg: '#2a2218' }, false);
+        // Plant pots on floor, watering can, seed box, herbs above
+        place('plant_pot', centerCol, floorRow, { char: 'Y', fg: '#5aaa4a', bg });
+        place('plant_pot2', centerCol + 1, floorRow, { char: 'Y', fg: '#6aba5a', bg });
+        place('watering_can', leftCol + 1, floorRow, { char: 'J', fg: '#88aacc', bg });
+        place('seed_box', rightCol, floorRow, { char: '[', fg: '#aa8855', bg });
+        place('herbs', centerCol - 1, shelfRow, { char: '{', fg: '#4a8a3a', bg }, false);
+        // Flowers on wall
+        if (wallRow >= ceilingRow) {
+          place('flower', rightCol - 1, wallRow, { char: '*', fg: '#ddaa88', bg }, false);
         }
         break;
     }
 
-    // Villager is now rendered dynamically by BuildingRenderer at center of house
     return furniture;
   }
 

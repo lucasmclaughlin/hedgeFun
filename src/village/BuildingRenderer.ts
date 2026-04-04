@@ -198,13 +198,16 @@ export class BuildingRenderer {
             frame = def.idleFrames[this.animFrame % def.idleFrames.length];
           }
 
-          // Place villager near center of interior
-          const centerCol = Math.floor(w / 2);
-          const centerRow = Math.floor(h / 2);
+          // Use the villager's tracked interior position (side-view: on the floor)
+          const vCol = villager.interiorCol;
+          const vRow = villager.interiorRow;
 
           for (const [colOff, rowOff, glyph] of frame.cells) {
-            const key = `${centerCol + colOff},${centerRow + rowOff}`;
-            villagerCells.set(key, { char: glyph.char, fg: glyph.fg, bg: '#2a2218' });
+            // Flip multi-cell offset for facing direction
+            const actualColOff = villager.facing < 0 ? -colOff : colOff;
+            const ch = villager.facing < 0 ? flipCharForInterior(glyph.char) : glyph.char;
+            const key = `${vCol + actualColOff},${vRow + rowOff}`;
+            villagerCells.set(key, { char: ch, fg: glyph.fg, bg: '#2a2218' });
           }
         }
       }
@@ -353,5 +356,22 @@ export class BuildingRenderer {
       this.renderer.setOverlay(glowCol, row, { char: '.', fg: '#aa8833' }, OverlayLayer.Building);
       this.previousCells.add(`${glowCol},${row}`);
     }
+  }
+}
+
+/** Flip a character for left-facing villagers in interior view */
+function flipCharForInterior(ch: string): string {
+  switch (ch) {
+    case '>': return '<';
+    case '<': return '>';
+    case ')': return '(';
+    case '(': return ')';
+    case '/': return '\\';
+    case '\\': return '/';
+    case '}': return '{';
+    case '{': return '}';
+    case 'd': return 'b';
+    case 'b': return 'd';
+    default: return ch;
   }
 }

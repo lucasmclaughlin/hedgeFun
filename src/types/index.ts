@@ -553,3 +553,83 @@ export interface PaletteCategory {
   name: string;
   items: Glyph[];
 }
+
+// ── hedgeKingdoms: Combat system ────────────────────────────────────────
+
+export type EnemyPhase = 'advancing' | 'attacking' | 'fleeing';
+
+export interface EnemyDef {
+  id: string;
+  name: string;
+  layer: Layer;
+  rowRange: [number, number];
+  speed: number;       // cols per second
+  maxHp: number;
+  damage: number;      // lives lost when it breaches centre
+  attackDamage: number; // HP dealt to defenders in melee
+  /** Plant species IDs (from species.ts) whose presence slows this enemy */
+  slowedBySpecies: string[];
+  frames: Record<EnemyPhase, CreatureFrame[]>;
+}
+
+export interface EnemyState {
+  id: number;
+  defId: string;
+  col: number;
+  row: number;
+  hp: number;
+  facing: 1 | -1;
+  currentSpeed: number;
+  phase: EnemyPhase;
+  frameIndex: number;
+  animTimer: number;
+  moveTimer: number;
+  /** ID of defender currently engaged in melee */
+  engagedDefenderId: number | null;
+}
+
+export interface WaveState {
+  waveNumber: number;
+  phase: 'off' | 'prep' | 'active';
+  prepMsRemaining: number;
+  lives: number;
+  enemiesRemainingInWave: number;
+}
+
+export enum DefenderRole {
+  Archer      = 0,
+  Infantry    = 1,
+  Heavy       = 2,
+  Scout       = 3,
+  NightRaider = 4,
+  Sapper      = 5,
+  Alchemist   = 6,
+}
+
+export interface DefenderState {
+  creatureId: number;         // links to existing CreatureState.id
+  role: DefenderRole;
+  hp: number;
+  maxHp: number;
+  attackCooldownMs: number;
+  assignedCol: number | null;
+  assignedRow: number | null;
+}
+
+export interface Fortification {
+  col: number;
+  row: number;
+  type: 'wall' | 'watchtower' | 'gate';
+  hp: number;
+}
+
+export interface BattleEffect {
+  id: number;
+  type: 'arrow' | 'clash' | 'shield' | 'poison';
+  col: number;
+  row: number;
+  targetCol: number;
+  progress: number;   // 0–1
+  durationMs: number;
+  elapsedMs: number;
+}

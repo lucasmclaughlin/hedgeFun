@@ -226,28 +226,7 @@ export class BuildingManager {
         break;
     }
 
-    // ── Place the villager glyph ──
-    // Find a free cell near center
-    for (const dc of [0, 1, -1, 0, 1]) {
-      for (const dr of [1, 0, 1, -1, 0]) {
-        const c = centerCol + dc;
-        const r = centerRow + dr;
-        const key = `${c},${r}`;
-        if (floorSet.has(key) && !usedCells.has(key)) {
-          usedCells.add(key);
-          const glyph = villager?.homeGlyph ?? { char: '?', fg: '#ccaa88' };
-          furniture.push({
-            id: 'villager',
-            colOff: c,
-            rowOff: r,
-            glyph: { ...glyph, bg: '#2a2218' },
-            permanent: true,
-          });
-          return furniture;
-        }
-      }
-    }
-
+    // Villager is now rendered dynamically by BuildingRenderer at center of house
     return furniture;
   }
 

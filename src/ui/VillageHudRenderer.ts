@@ -1,8 +1,9 @@
 import Phaser from 'phaser';
 import { Season, BuildModeState, BuildPhase, DAY_HOUR_NAMES } from '@/types';
-import type { TimePeriod, Weather, BuildModeContext, HouseState, VillagerDef, VillagerState } from '@/types';
+import type { TimePeriod, Weather, BuildModeContext, HouseState, VillagerDef, FurnitureItem } from '@/types';
 import { BUILD_PALETTE } from '@/data/buildPalette';
 import { VILLAGERS } from '@/data/villagers';
+import { FURNITURE } from '@/data/furniture';
 
 const SEASON_NAMES: Record<Season, string> = {
   [Season.Spring]: 'Spring',
@@ -42,6 +43,7 @@ export class VillageHudRenderer {
   private hoveredVillager: VillagerDef | null = null;
   private hoveredHouse: HouseState | null = null;
   private hoveredActivity: string | null = null;
+  private hoveredItem: FurnitureItem | null = null;
 
   constructor(scene: Phaser.Scene) {
     this.scene = scene;
@@ -94,6 +96,10 @@ export class VillageHudRenderer {
     this.hoveredVillager = villager;
     this.hoveredHouse = house;
     this.hoveredActivity = activity ?? null;
+  }
+
+  setHoveredItem(item: FurnitureItem | null): void {
+    this.hoveredItem = item;
   }
 
   showMessage(msg: string): void {
@@ -185,7 +191,16 @@ export class VillageHudRenderer {
     }
 
     // ── Tooltip ──
-    if (this.hoveredVillager && this.hoveredHouse && buildCtx.state !== BuildModeState.Building) {
+    if (this.hoveredItem && buildCtx.state === BuildModeState.ViewingInterior) {
+      // Item tooltip in interior view
+      const def = FURNITURE[this.hoveredItem.id];
+      const name = def?.name ?? this.hoveredItem.id;
+      const desc = def?.description ?? '';
+      const tip = desc ? `${name} — ${desc}` : name;
+      this.tooltipText.setText(tip);
+      this.tooltipText.setPosition(mouseX + 12, mouseY - 20);
+      this.tooltipText.setAlpha(1);
+    } else if (this.hoveredVillager && this.hoveredHouse && buildCtx.state !== BuildModeState.Building) {
       let tip = `${this.hoveredVillager.name}`;
       if (this.hoveredHouse.phase === BuildPhase.Complete) {
         const activity = this.hoveredActivity

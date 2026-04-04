@@ -3,7 +3,7 @@ import type { VillagerDef } from '@/types';
 
 /**
  * Starter villagers for hedgeFriends mode.
- * Each has a personality that affects their interior, daily routine, and possessions.
+ * Frames match the ASCII art from the main hedgeFun creature definitions.
  */
 export const VILLAGERS: Record<string, VillagerDef> = {
   mrs_bramble: {
@@ -15,11 +15,16 @@ export const VILLAGERS: Record<string, VillagerDef> = {
     houseWidth: 7,
     houseHeight: 6,
     preferredPlants: ['hawthorn', 'blackthorn', 'elder'],
-    homeGlyph: { char: '(:', fg: '#c8a060' },
-    walkingGlyphs: [
-      { char: '(:', fg: '#c8a060' },
-      { char: '(;', fg: '#c8a060' },
+    // Hedgehog: (")(") idle, (">) moving, @ sleeping
+    idleFrames: [
+      { cells: [[-1, 0, { char: '(', fg: '#8a6a3a' }], [0, 0, { char: '"', fg: '#aa8a4a' }], [1, 0, { char: ')', fg: '#8a6a3a' }]] },
+      { cells: [[-1, 0, { char: '(', fg: '#8a6a3a' }], [0, 0, { char: '"', fg: '#9a7a3a' }], [1, 0, { char: ')', fg: '#8a6a3a' }]] },
     ],
+    walkFrames: [
+      { cells: [[-1, 0, { char: '(', fg: '#8a6a3a' }], [0, 0, { char: '"', fg: '#aa8a4a' }], [1, 0, { char: '>', fg: '#7a5a2a' }]] },
+      { cells: [[-1, 0, { char: '(', fg: '#8a6a3a' }], [0, 0, { char: '^', fg: '#aa8a4a' }], [1, 0, { char: '>', fg: '#7a5a2a' }]] },
+    ],
+    sleepFrame: { cells: [[0, 0, { char: '@', fg: '#7a5a2a' }]] },
     possessions: [
       'teapot', 'pie', 'jam_jar', 'biscuit_tin',
       'recipe_book', 'flour_sack', 'honey_pot', 'cake_stand',
@@ -47,11 +52,16 @@ export const VILLAGERS: Record<string, VillagerDef> = {
     houseWidth: 6,
     houseHeight: 5,
     preferredPlants: ['hazel', 'dogrose', 'blackthorn'],
-    homeGlyph: { char: 'o>', fg: '#d4a050' },
-    walkingGlyphs: [
-      { char: 'o>', fg: '#d4a050' },
-      { char: 'o~', fg: '#d4a050' },
+    // Dormouse: n idle, >~ moving, @ sleeping
+    idleFrames: [
+      { cells: [[0, 0, { char: 'n', fg: '#ca9a5a' }]] },
+      { cells: [[0, 0, { char: 'n', fg: '#ba8a4a' }]] },
     ],
+    walkFrames: [
+      { cells: [[0, 0, { char: '>', fg: '#ca9a5a' }], [-1, 0, { char: '~', fg: '#aa7a3a' }]] },
+      { cells: [[0, 0, { char: 'n', fg: '#ca9a5a' }], [-1, 0, { char: '-', fg: '#aa7a3a' }]] },
+    ],
+    sleepFrame: { cells: [[0, 0, { char: '@', fg: '#9a7a3a' }]] },
     possessions: [
       'bookshelf', 'reading_lamp', 'quill_pen', 'ink_pot',
       'spectacles', 'letter', 'notebook', 'pressed_flower',
@@ -79,11 +89,16 @@ export const VILLAGERS: Record<string, VillagerDef> = {
     houseWidth: 5,
     houseHeight: 5,
     preferredPlants: ['hawthorn', 'dogrose', 'holly'],
-    homeGlyph: { char: '>', fg: '#a07040' },
-    walkingGlyphs: [
-      { char: '>', fg: '#a07040' },
-      { char: '}', fg: '#a07040' },
+    // Wren: >' idle, >' moving, o sleeping
+    idleFrames: [
+      { cells: [[0, 0, { char: '>', fg: '#8a6a3a' }], [-1, 0, { char: '\'', fg: '#7a5a2a' }]] },
+      { cells: [[0, 0, { char: ')', fg: '#8a6a3a' }], [-1, 0, { char: ',', fg: '#7a5a2a' }]] },
     ],
+    walkFrames: [
+      { cells: [[0, 0, { char: '>', fg: '#9a7a4a' }], [-1, 0, { char: '\'', fg: '#7a5a2a' }]] },
+      { cells: [[0, 0, { char: '-', fg: '#9a7a4a' }], [-1, 0, { char: 'v', fg: '#7a5a2a' }]] },
+    ],
+    sleepFrame: { cells: [[0, 0, { char: 'o', fg: '#6a4a2a' }]] },
     possessions: [
       'thimble', 'needle_cushion', 'yarn_basket', 'quilt_square',
       'scissors', 'button_box', 'ribbon_spool', 'tiny_hat',
@@ -111,11 +126,16 @@ export const VILLAGERS: Record<string, VillagerDef> = {
     houseWidth: 7,
     houseHeight: 7,
     preferredPlants: ['hawthorn', 'elder', 'hazel'],
-    homeGlyph: { char: 'O', fg: '#c8a070' },
-    walkingGlyphs: [
-      { char: 'V', fg: '#c8a070' },
-      { char: 'W', fg: '#c8a070' },
+    // Tawny owl: {O} idle, \O/ moving, V sleeping
+    idleFrames: [
+      { cells: [[-1, 0, { char: '{', fg: '#7a5a3a' }], [0, 0, { char: 'O', fg: '#eaca4a' }], [1, 0, { char: '}', fg: '#7a5a3a' }]] },
+      { cells: [[-1, 0, { char: '{', fg: '#7a5a3a' }], [0, 0, { char: 'o', fg: '#daba3a' }], [1, 0, { char: '}', fg: '#7a5a3a' }]] },
     ],
+    walkFrames: [
+      { cells: [[-1, 0, { char: '\\', fg: '#8a6a4a' }], [0, 0, { char: 'O', fg: '#eaca4a' }], [1, 0, { char: '/', fg: '#8a6a4a' }]] },
+      { cells: [[-1, 0, { char: '/', fg: '#8a6a4a' }], [0, 0, { char: 'O', fg: '#eaca4a' }], [1, 0, { char: '\\', fg: '#8a6a4a' }]] },
+    ],
+    sleepFrame: { cells: [[0, 0, { char: 'V', fg: '#5a3a1a' }]] },
     possessions: [
       'bookshelf', 'reading_lamp', 'ink_pot', 'quill_pen',
       'spectacles', 'letter', 'notebook', 'pressed_flower',
@@ -143,11 +163,16 @@ export const VILLAGERS: Record<string, VillagerDef> = {
     houseWidth: 5,
     houseHeight: 5,
     preferredPlants: ['holly', 'hawthorn', 'dogrose'],
-    homeGlyph: { char: '>', fg: '#cc5533' },
-    walkingGlyphs: [
-      { char: '>', fg: '#cc5533' },
-      { char: '}', fg: '#cc5533' },
+    // Robin: >. idle, >' moving, o sleeping
+    idleFrames: [
+      { cells: [[0, 0, { char: '>', fg: '#da5a3a' }], [-1, 0, { char: '.', fg: '#6a4a2a' }]] },
+      { cells: [[0, 0, { char: ')', fg: '#da5a3a' }], [-1, 0, { char: '.', fg: '#6a4a2a' }]] },
     ],
+    walkFrames: [
+      { cells: [[0, 0, { char: '>', fg: '#da5a3a' }], [-1, 0, { char: '\'', fg: '#7a5a3a' }]] },
+      { cells: [[0, 0, { char: '-', fg: '#da5a3a' }], [-1, 0, { char: 'v', fg: '#7a5a3a' }]] },
+    ],
+    sleepFrame: { cells: [[0, 0, { char: 'o', fg: '#aa4a2a' }]] },
     possessions: [
       'letter', 'ribbon_spool', 'teapot', 'pressed_flower',
       'tiny_hat', 'notebook', 'button_box', 'quilt_square',
@@ -175,11 +200,16 @@ export const VILLAGERS: Record<string, VillagerDef> = {
     houseWidth: 8,
     houseHeight: 6,
     preferredPlants: ['hawthorn', 'blackthorn', 'elder'],
-    homeGlyph: { char: 'B', fg: '#aaaaaa' },
-    walkingGlyphs: [
-      { char: 'B', fg: '#aaaaaa' },
-      { char: 'b', fg: '#aaaaaa' },
+    // Badger: (:) idle, (:> moving, O sleeping
+    idleFrames: [
+      { cells: [[-1, 0, { char: '(', fg: '#aaaaaa' }], [0, 0, { char: ':', fg: '#1a1a1a' }], [1, 0, { char: ')', fg: '#aaaaaa' }]] },
+      { cells: [[-1, 0, { char: '(', fg: '#999999' }], [0, 0, { char: '.', fg: '#1a1a1a' }], [1, 0, { char: ')', fg: '#999999' }]] },
     ],
+    walkFrames: [
+      { cells: [[-1, 0, { char: '(', fg: '#aaaaaa' }], [0, 0, { char: ':', fg: '#1a1a1a' }], [1, 0, { char: '>', fg: '#888888' }]] },
+      { cells: [[-1, 0, { char: '(', fg: '#999999' }], [0, 0, { char: ':', fg: '#1a1a1a' }], [1, 0, { char: '-', fg: '#888888' }]] },
+    ],
+    sleepFrame: { cells: [[0, 0, { char: 'O', fg: '#777777' }]] },
     possessions: [
       'scissors', 'thimble', 'yarn_basket', 'button_box',
       'honey_pot', 'flour_sack', 'recipe_book', 'quilt_square',
@@ -207,11 +237,16 @@ export const VILLAGERS: Record<string, VillagerDef> = {
     houseWidth: 7,
     houseHeight: 6,
     preferredPlants: ['elder', 'hazel', 'dogrose'],
-    homeGlyph: { char: 'f', fg: '#dd8833' },
-    walkingGlyphs: [
-      { char: 'f', fg: '#dd8833' },
-      { char: 'F', fg: '#dd8833' },
+    // Fox: (^) idle, >-~ moving, C sleeping
+    idleFrames: [
+      { cells: [[-1, 0, { char: '(', fg: '#ba5a1a' }], [0, 0, { char: '^', fg: '#da7a2a' }], [1, 0, { char: ')', fg: '#ba5a1a' }]] },
+      { cells: [[-1, 0, { char: '(', fg: '#ba5a1a' }], [0, 0, { char: '"', fg: '#da7a2a' }], [1, 0, { char: ')', fg: '#ba5a1a' }]] },
     ],
+    walkFrames: [
+      { cells: [[-1, 0, { char: '>', fg: '#ca6a2a' }], [0, 0, { char: '-', fg: '#aa5a1a' }], [1, 0, { char: '~', fg: '#ba5a1a' }]] },
+      { cells: [[-1, 0, { char: '>', fg: '#ca6a2a' }], [0, 0, { char: '~', fg: '#aa5a1a' }], [1, 0, { char: '-', fg: '#ba5a1a' }]] },
+    ],
+    sleepFrame: { cells: [[0, 0, { char: 'C', fg: '#8a4a1a' }]] },
     possessions: [
       'teapot', 'pie', 'jam_jar', 'cake_stand',
       'recipe_book', 'honey_pot', 'flour_sack', 'biscuit_tin',
@@ -239,11 +274,16 @@ export const VILLAGERS: Record<string, VillagerDef> = {
     houseWidth: 6,
     houseHeight: 5,
     preferredPlants: ['dogrose', 'hawthorn', 'elder'],
-    homeGlyph: { char: 'o', fg: '#668844' },
-    walkingGlyphs: [
-      { char: 'o', fg: '#668844' },
-      { char: 'O', fg: '#668844' },
+    // Toad: & idle, &/^ moving, o sleeping
+    idleFrames: [
+      { cells: [[0, 0, { char: '&', fg: '#5a6a3a' }]] },
+      { cells: [[0, 0, { char: '&', fg: '#4a5a2a' }]] },
     ],
+    walkFrames: [
+      { cells: [[0, 0, { char: '&', fg: '#5a6a3a' }]] },
+      { cells: [[0, 0, { char: '^', fg: '#5a6a3a' }]] },
+    ],
+    sleepFrame: { cells: [[0, 0, { char: 'o', fg: '#3a4a1a' }]] },
     possessions: [
       'pressed_flower', 'honey_pot', 'teapot', 'notebook',
       'ribbon_spool', 'jam_jar', 'quilt_square', 'button_box',

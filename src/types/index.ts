@@ -479,6 +479,11 @@ export interface HouseState {
   furniture: FurnitureItem[];
 }
 
+/** Multi-cell animation frame for villager art (same format as CreatureFrame) */
+export interface VillagerFrame {
+  cells: Array<[number, number, Glyph]>;  // [colOff, rowOff, glyph]
+}
+
 /** Villager species definition */
 export interface VillagerDef {
   id: string;
@@ -489,8 +494,12 @@ export interface VillagerDef {
   houseWidth: number;
   houseHeight: number;
   preferredPlants: string[];
-  homeGlyph: Glyph;
-  walkingGlyphs: Glyph[];
+  /** Multi-cell idle animation frames (shown inside home) */
+  idleFrames: VillagerFrame[];
+  /** Multi-cell walking animation frames */
+  walkFrames: VillagerFrame[];
+  /** Single-cell sleeping frame */
+  sleepFrame: VillagerFrame;
   possessions: string[];
   dailyRoutine: Record<number, string>;
   visitPreferences: string[];

@@ -248,7 +248,14 @@ export class VillageScene extends Phaser.Scene {
     }
 
     // ── Re-render buildings ──
-    this.buildingRenderer.render(this.buildingManager.getHouses(), this.buildMode.getContext(), currentPeriod.season, dayHour);
+    this.buildingRenderer.render(
+      this.buildingManager.getHouses(),
+      this.buildMode.getContext(),
+      currentPeriod.season,
+      dayHour,
+      this.villagerSim.getVillagers(),
+      delta,
+    );
 
     // ── HUD ──
     this.hudRenderer.update(
@@ -413,6 +420,61 @@ export class VillageScene extends Phaser.Scene {
   }
 
   private updateHoverState(col: number, row: number): void {
+    const ctx = this.buildMode.getContext();
+
+    // Interior view: check for item and villager hover within the house
+    if (ctx.state === BuildModeState.ViewingInterior && ctx.activeHouseId !== null) {
+      const house = this.buildingManager.getHouse(ctx.activeHouseId);
+      if (house) {
+        const colOff = col - house.anchorCol;
+        const rowOff = row - house.anchorRow;
+
+        // Check if hovering a furniture item
+        const item = house.furniture.find(f => f.colOff === colOff && f.rowOff === rowOff);
+        if (item) {
+          this.hudRenderer.setHoveredItem(item);
+          // Also check if hovering the villager at center
+          const villagerState = this.villagerSim.getVillagerForHouse(house.id);
+          if (villagerState) {
+            const def = VILLAGER_LIST.find(v => v.id === house.villagerId);
+            const hourIndex = this.timeClock.getDayHourIndex();
+            const activity = this.villagerSim.getActivityDescription(house.id, hourIndex);
+            this.hudRenderer.setHoveredVillager(def ?? null, house, activity);
+          }
+          return;
+        }
+        this.hudRenderer.setHoveredItem(null);
+
+        // Check if hovering the villager (at center of house)
+        const centerCol = Math.floor(house.width / 2);
+        const centerRow = Math.floor(house.height / 2);
+        const villagerState = this.villagerSim.getVillagerForHouse(house.id);
+        if (villagerState && villagerState.isHome) {
+          const def = VILLAGER_LIST.find(v => v.id === house.villagerId);
+          if (def) {
+            // Check if mouse is on any cell of the villager's current frame
+            const isSleeping = villagerState.activity.toLowerCase().includes('snoozing')
+              || villagerState.activity.toLowerCase().includes('dozing');
+            const frame = isSleeping ? def.sleepFrame : def.idleFrames[0];
+            const isOnVillager = frame.cells.some(
+              ([co, ro]) => colOff === centerCol + co && rowOff === centerRow + ro,
+            );
+            if (isOnVillager) {
+              const hourIndex = this.timeClock.getDayHourIndex();
+              const activity = this.villagerSim.getActivityDescription(house.id, hourIndex);
+              this.hudRenderer.setHoveredVillager(def, house, activity);
+              return;
+            }
+          }
+        }
+
+        this.hudRenderer.setHoveredVillager(null, null, null);
+        return;
+      }
+    }
+
+    this.hudRenderer.setHoveredItem(null);
+
     const house = this.buildingManager.getHouseAtCell(col, row);
     if (house) {
       const villager = VILLAGER_LIST.find(v => v.id === house.villagerId);

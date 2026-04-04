@@ -1,6 +1,7 @@
 import { BuildPhase, BuildModeState, OverlayLayer, Season } from '@/types';
-import type { HouseState, BuildModeContext, Glyph } from '@/types';
+import type { HouseState, BuildModeContext, Glyph, VillagerState, VillagerFrame } from '@/types';
 import type { AsciiRenderer } from '@/rendering/AsciiRenderer';
+import { VILLAGERS } from '@/data/villagers';
 
 /** Scaffold glyphs for a building site — looks like a staked-out plot */
 const SCAFFOLD_CORNER_TL: Glyph = { char: '+', fg: '#aa9060', bg: '#1a1610' };
@@ -27,7 +28,18 @@ export class BuildingRenderer {
     this.renderer = renderer;
   }
 
-  render(houses: ReadonlyArray<HouseState>, buildCtx: BuildModeContext, season?: Season, hourIndex?: number): void {
+  /** Animation timer for interior villager animation */
+  private animTimer = 0;
+  private animFrame = 0;
+
+  render(
+    houses: ReadonlyArray<HouseState>,
+    buildCtx: BuildModeContext,
+    season?: Season,
+    hourIndex?: number,
+    villagers?: ReadonlyArray<VillagerState>,
+    delta?: number,
+  ): void {
     // Clear previous building cells
     for (const key of this.previousCells) {
       const [col, row] = key.split(',').map(Number);
@@ -36,9 +48,19 @@ export class BuildingRenderer {
     }
     this.previousCells.clear();
 
+    // Advance interior animation timer
+    if (delta) {
+      this.animTimer += delta;
+      if (this.animTimer > 600) {
+        this.animTimer = 0;
+        this.animFrame = (this.animFrame + 1) % 2;
+      }
+    }
+
     for (const house of houses) {
       if (buildCtx.state === BuildModeState.ViewingInterior && buildCtx.activeHouseId === house.id) {
-        this.renderInterior(house);
+        const villager = villagers?.find(v => v.houseId === house.id);
+        this.renderInterior(house, villager, hourIndex);
       } else if (buildCtx.state === BuildModeState.Building && buildCtx.activeHouseId === house.id) {
         this.renderBuildMode(house, buildCtx);
       } else {
@@ -140,7 +162,7 @@ export class BuildingRenderer {
     this.previousCells.add(`${cursorCol},${cursorRow}`);
   }
 
-  private renderInterior(house: HouseState): void {
+  private renderInterior(house: HouseState, villager?: VillagerState, hourIndex?: number): void {
     const { anchorCol: ac, anchorRow: ar, width: w, height: h } = house;
 
     // Build a set of exterior cell positions
@@ -157,6 +179,35 @@ export class BuildingRenderer {
     const furnitureMap = new Map<string, Glyph>();
     for (const item of house.furniture) {
       furnitureMap.set(`${item.colOff},${item.rowOff}`, item.glyph);
+    }
+
+    // Get the villager's animated frame to draw inside the house
+    const villagerCells = new Map<string, Glyph>();
+    if (villager) {
+      const def = VILLAGERS[villager.defId];
+      if (def) {
+        const isSleeping = villager.activity.toLowerCase().includes('snoozing')
+          || villager.activity.toLowerCase().includes('dozing');
+        const isOut = !villager.isHome && villager.visitingHouseId !== null;
+
+        if (!isOut) {
+          let frame: VillagerFrame;
+          if (isSleeping) {
+            frame = def.sleepFrame;
+          } else {
+            frame = def.idleFrames[this.animFrame % def.idleFrames.length];
+          }
+
+          // Place villager near center of interior
+          const centerCol = Math.floor(w / 2);
+          const centerRow = Math.floor(h / 2);
+
+          for (const [colOff, rowOff, glyph] of frame.cells) {
+            const key = `${centerCol + colOff},${centerRow + rowOff}`;
+            villagerCells.set(key, { char: glyph.char, fg: glyph.fg, bg: '#2a2218' });
+          }
+        }
+      }
     }
 
     // Layers that could draw over the interior — clear them all in the house region
@@ -183,8 +234,11 @@ export class BuildingRenderer {
 
         let glyph: Glyph;
 
-        if (furnitureMap.has(key)) {
-          // Furniture takes priority
+        if (villagerCells.has(key)) {
+          // Villager takes top priority
+          glyph = villagerCells.get(key)!;
+        } else if (furnitureMap.has(key)) {
+          // Furniture next
           glyph = furnitureMap.get(key)!;
         } else if (interiorMap.has(key)) {
           // Interior floor

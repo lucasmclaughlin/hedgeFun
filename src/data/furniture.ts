@@ -58,6 +58,17 @@ export const FURNITURE: Record<string, FurnitureDef> = {
 
   // ── Garden ──
   plant_pot:     { id: 'plant_pot',     name: 'Plant Pot',       glyph: { char: 'Y', fg: '#5aaa4a' }, description: 'A healthy fern' },
+  plant_pot2:    { id: 'plant_pot2',    name: 'Plant Pot',       glyph: { char: 'Y', fg: '#6aba5a' }, description: 'A trailing ivy' },
   watering_can:  { id: 'watering_can',  name: 'Watering Can',    glyph: { char: 'J', fg: '#88aacc' }, description: 'Galvanised tin' },
   seed_box:      { id: 'seed_box',      name: 'Seed Box',        glyph: { char: '[', fg: '#aa8855' }, description: 'Labelled in tiny script' },
+  herbs:         { id: 'herbs',         name: 'Herb Bunch',      glyph: { char: '{', fg: '#4a8a3a' }, description: 'Rosemary, thyme, and sage' },
+  flower:        { id: 'flower',        name: 'Dried Flowers',   glyph: { char: '*', fg: '#ddaa88' }, description: 'A posy of hedgerow blooms' },
+
+  // ── Interior fixtures ──
+  bookshelf2:    { id: 'bookshelf2',    name: 'Bookshelf',       glyph: { char: '[', fg: '#997755' }, description: 'Overflowing with almanacs' },
+  lamp:          { id: 'lamp',          name: 'Oil Lamp',        glyph: { char: '?', fg: '#eebb44' }, description: 'A warm steady flame' },
+  quill:         { id: 'quill',         name: 'Quill Pen',       glyph: { char: '/', fg: '#8888aa' }, description: 'A goose feather quill' },
+  yarn:          { id: 'yarn',          name: 'Yarn Ball',       glyph: { char: '@', fg: '#cc6688' }, description: 'Soft dyed wool' },
+  fabric:        { id: 'fabric',        name: 'Fabric Roll',     glyph: { char: '%', fg: '#88aacc' }, description: 'Fine woven cloth' },
+  flour:         { id: 'flour',         name: 'Flour Sack',      glyph: { char: '%', fg: '#ccccaa' }, description: 'Acorn flour, stone-ground' },
 };

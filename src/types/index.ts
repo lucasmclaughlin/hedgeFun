@@ -484,6 +484,12 @@ export interface VillagerFrame {
   cells: Array<[number, number, Glyph]>;  // [colOff, rowOff, glyph]
 }
 
+/** A recipe a villager can cook on their stove */
+export interface VillagerRecipe {
+  name: string;
+  description: string;
+}
+
 /** Villager species definition */
 export interface VillagerDef {
   id: string;
@@ -501,6 +507,8 @@ export interface VillagerDef {
   /** Single-cell sleeping frame */
   sleepFrame: VillagerFrame;
   possessions: string[];
+  /** Recipes this villager can cook on their stove */
+  recipes: VillagerRecipe[];
   dailyRoutine: Record<number, string>;
   visitPreferences: string[];
   description: string;

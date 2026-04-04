@@ -396,13 +396,18 @@ export class VillageScene extends Phaser.Scene {
     }
 
     if (ctx.state === BuildModeState.ViewingInterior) {
-      // Click outside house exits interior view
       const house = ctx.activeHouseId !== null ? this.buildingManager.getHouse(ctx.activeHouseId) : null;
       if (house) {
         const colOff = col - house.anchorCol;
         const rowOff = row - house.anchorRow;
         if (colOff < 0 || colOff >= house.width || rowOff < 0 || rowOff >= house.height) {
           this.exitInteriorView();
+        } else {
+          // Check if clicked the stove
+          const item = house.furniture.find(f => f.colOff === colOff && f.rowOff === rowOff);
+          if (item && item.id === 'stove') {
+            this.cookRecipe(house);
+          }
         }
       }
       return;
@@ -557,6 +562,16 @@ export class VillageScene extends Phaser.Scene {
   private exitInteriorView(): void {
     this.buildMode.exitInteriorView();
     this.zoomOut();
+  }
+
+  private cookRecipe(house: HouseState): void {
+    const villager = VILLAGER_LIST.find(v => v.id === house.villagerId);
+    if (!villager || villager.recipes.length === 0) return;
+
+    const recipe = villager.recipes[Math.floor(Math.random() * villager.recipes.length)];
+    this.hudRenderer.showMessage(
+      `${villager.name} is making ${recipe.name}! ${recipe.description}`,
+    );
   }
 
   // ── Glyph placement ──

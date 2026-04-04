@@ -15,7 +15,6 @@ export const VILLAGERS: Record<string, VillagerDef> = {
     houseWidth: 7,
     houseHeight: 6,
     preferredPlants: ['hawthorn', 'blackthorn', 'elder'],
-    // Hedgehog: (")(") idle, (">) moving, @ sleeping
     idleFrames: [
       { cells: [[-1, 0, { char: '(', fg: '#8a6a3a' }], [0, 0, { char: '"', fg: '#aa8a4a' }], [1, 0, { char: ')', fg: '#8a6a3a' }]] },
       { cells: [[-1, 0, { char: '(', fg: '#8a6a3a' }], [0, 0, { char: '"', fg: '#9a7a3a' }], [1, 0, { char: ')', fg: '#8a6a3a' }]] },
@@ -28,6 +27,13 @@ export const VILLAGERS: Record<string, VillagerDef> = {
     possessions: [
       'teapot', 'pie', 'jam_jar', 'biscuit_tin',
       'recipe_book', 'flour_sack', 'honey_pot', 'cake_stand',
+    ],
+    recipes: [
+      { name: 'Nut Biscuits', description: 'Crunchy hazelnut biscuits with a dusting of acorn flour' },
+      { name: 'Blackberry Pie', description: 'A lattice-topped pie oozing with hedgerow blackberries' },
+      { name: 'Elderflower Cordial', description: 'Sweet elderflower syrup, perfect for warm evenings' },
+      { name: 'Honey Cake', description: 'A sticky sponge drizzled with wild hedgerow honey' },
+      { name: 'Nettle Soup', description: 'A warming green soup with a peppery kick' },
     ],
     dailyRoutine: {
       0: 'snoozing under a patchwork quilt',
@@ -52,7 +58,6 @@ export const VILLAGERS: Record<string, VillagerDef> = {
     houseWidth: 6,
     houseHeight: 5,
     preferredPlants: ['hazel', 'dogrose', 'blackthorn'],
-    // Dormouse: n idle, >~ moving, @ sleeping
     idleFrames: [
       { cells: [[0, 0, { char: 'n', fg: '#ca9a5a' }]] },
       { cells: [[0, 0, { char: 'n', fg: '#ba8a4a' }]] },
@@ -65,6 +70,12 @@ export const VILLAGERS: Record<string, VillagerDef> = {
     possessions: [
       'bookshelf', 'reading_lamp', 'quill_pen', 'ink_pot',
       'spectacles', 'letter', 'notebook', 'pressed_flower',
+    ],
+    recipes: [
+      { name: 'Hazelnut Coffee', description: 'Rich roasted hazelnut brew, strong enough to keep a dormouse awake' },
+      { name: 'Acorn Porridge', description: 'Creamy porridge with toasted acorn pieces and honey' },
+      { name: 'Rosehip Tea', description: 'A rosy infusion from dried hedgerow hips' },
+      { name: 'Sloe Berry Jam', description: 'Dark tangy jam from autumn sloe berries' },
     ],
     dailyRoutine: {
       0: 'snoozing in a nest of shredded pages',
@@ -89,7 +100,6 @@ export const VILLAGERS: Record<string, VillagerDef> = {
     houseWidth: 5,
     houseHeight: 5,
     preferredPlants: ['hawthorn', 'dogrose', 'holly'],
-    // Wren: >' idle, >' moving, o sleeping
     idleFrames: [
       { cells: [[0, 0, { char: '>', fg: '#8a6a3a' }], [-1, 0, { char: '\'', fg: '#7a5a2a' }]] },
       { cells: [[0, 0, { char: ')', fg: '#8a6a3a' }], [-1, 0, { char: ',', fg: '#7a5a2a' }]] },
@@ -102,6 +112,11 @@ export const VILLAGERS: Record<string, VillagerDef> = {
     possessions: [
       'thimble', 'needle_cushion', 'yarn_basket', 'quilt_square',
       'scissors', 'button_box', 'ribbon_spool', 'tiny_hat',
+    ],
+    recipes: [
+      { name: 'Acorn-Cap Tea', description: 'Delicate tea served in a tiny acorn cup' },
+      { name: 'Seed Cake', description: 'A light sponge studded with poppy and fennel seeds' },
+      { name: 'Dandelion Salad', description: 'Fresh greens with cress and violet petals' },
     ],
     dailyRoutine: {
       0: 'snoozing in a woven nest',
@@ -126,7 +141,6 @@ export const VILLAGERS: Record<string, VillagerDef> = {
     houseWidth: 7,
     houseHeight: 7,
     preferredPlants: ['hawthorn', 'elder', 'hazel'],
-    // Tawny owl: {O} idle, \O/ moving, V sleeping
     idleFrames: [
       { cells: [[-1, 0, { char: '{', fg: '#7a5a3a' }], [0, 0, { char: 'O', fg: '#eaca4a' }], [1, 0, { char: '}', fg: '#7a5a3a' }]] },
       { cells: [[-1, 0, { char: '{', fg: '#7a5a3a' }], [0, 0, { char: 'o', fg: '#daba3a' }], [1, 0, { char: '}', fg: '#7a5a3a' }]] },
@@ -139,6 +153,12 @@ export const VILLAGERS: Record<string, VillagerDef> = {
     possessions: [
       'bookshelf', 'reading_lamp', 'ink_pot', 'quill_pen',
       'spectacles', 'letter', 'notebook', 'pressed_flower',
+    ],
+    recipes: [
+      { name: 'Strong Acorn Coffee', description: 'Triple-roasted acorn espresso, eye-openingly strong' },
+      { name: 'Moth Broth', description: 'A savoury broth of dried moths and wild thyme' },
+      { name: 'Bark-Scroll Toast', description: 'Thin bark crisps with elderberry preserve' },
+      { name: 'Midnight Mushroom Stew', description: 'A rich stew of field mushrooms and wild garlic' },
     ],
     dailyRoutine: {
       0: 'cataloguing moths by lamplight',
@@ -163,7 +183,6 @@ export const VILLAGERS: Record<string, VillagerDef> = {
     houseWidth: 5,
     houseHeight: 5,
     preferredPlants: ['holly', 'hawthorn', 'dogrose'],
-    // Robin: >. idle, >' moving, o sleeping
     idleFrames: [
       { cells: [[0, 0, { char: '>', fg: '#da5a3a' }], [-1, 0, { char: '.', fg: '#6a4a2a' }]] },
       { cells: [[0, 0, { char: ')', fg: '#da5a3a' }], [-1, 0, { char: '.', fg: '#6a4a2a' }]] },
@@ -176,6 +195,11 @@ export const VILLAGERS: Record<string, VillagerDef> = {
     possessions: [
       'letter', 'ribbon_spool', 'teapot', 'pressed_flower',
       'tiny_hat', 'notebook', 'button_box', 'quilt_square',
+    ],
+    recipes: [
+      { name: 'Holly Berry Tea', description: 'A festive crimson tea from dried holly berries' },
+      { name: 'Postman\'s Porridge', description: 'Hearty oat porridge with dried berries for a busy morning' },
+      { name: 'Worm Surprise', description: 'A savoury pastry with a wriggly filling (don\'t ask)' },
     ],
     dailyRoutine: {
       0: 'snoozing under a holly leaf',
@@ -200,7 +224,6 @@ export const VILLAGERS: Record<string, VillagerDef> = {
     houseWidth: 8,
     houseHeight: 6,
     preferredPlants: ['hawthorn', 'blackthorn', 'elder'],
-    // Badger: (:) idle, (:> moving, O sleeping
     idleFrames: [
       { cells: [[-1, 0, { char: '(', fg: '#aaaaaa' }], [0, 0, { char: ':', fg: '#1a1a1a' }], [1, 0, { char: ')', fg: '#aaaaaa' }]] },
       { cells: [[-1, 0, { char: '(', fg: '#999999' }], [0, 0, { char: '.', fg: '#1a1a1a' }], [1, 0, { char: ')', fg: '#999999' }]] },
@@ -213,6 +236,12 @@ export const VILLAGERS: Record<string, VillagerDef> = {
     possessions: [
       'scissors', 'thimble', 'yarn_basket', 'button_box',
       'honey_pot', 'flour_sack', 'recipe_book', 'quilt_square',
+    ],
+    recipes: [
+      { name: 'Earthworm Stew', description: 'A thick hearty stew — the badger\'s classic' },
+      { name: 'Elderberry Wine', description: 'Deep purple wine, aged in a barrel under the sett' },
+      { name: 'Honey Toast', description: 'Thick-cut toast slathered with wild honey' },
+      { name: 'Root Vegetable Hotpot', description: 'Turnips, parsnips, and wild garlic in a rich gravy' },
     ],
     dailyRoutine: {
       0: 'snoozing in a deep burrow',
@@ -237,7 +266,6 @@ export const VILLAGERS: Record<string, VillagerDef> = {
     houseWidth: 7,
     houseHeight: 6,
     preferredPlants: ['elder', 'hazel', 'dogrose'],
-    // Fox: (^) idle, >-~ moving, C sleeping
     idleFrames: [
       { cells: [[-1, 0, { char: '(', fg: '#ba5a1a' }], [0, 0, { char: '^', fg: '#da7a2a' }], [1, 0, { char: ')', fg: '#ba5a1a' }]] },
       { cells: [[-1, 0, { char: '(', fg: '#ba5a1a' }], [0, 0, { char: '"', fg: '#da7a2a' }], [1, 0, { char: ')', fg: '#ba5a1a' }]] },
@@ -250,6 +278,13 @@ export const VILLAGERS: Record<string, VillagerDef> = {
     possessions: [
       'teapot', 'pie', 'jam_jar', 'cake_stand',
       'recipe_book', 'honey_pot', 'flour_sack', 'biscuit_tin',
+    ],
+    recipes: [
+      { name: 'Sourdough Bread', description: 'Crusty golden loaf with a wild yeast starter' },
+      { name: 'Blackberry Crumble', description: 'Warm crumble with a buttery oat topping' },
+      { name: 'Hedgerow Pickle', description: 'A tangy mix of crab apples, sloes, and rosehips' },
+      { name: 'Mushroom Pasty', description: 'A golden pasty stuffed with field mushrooms and thyme' },
+      { name: 'Fox\'s Fancy Broth', description: 'A clear consommé with wild herbs and a dash of pepper' },
     ],
     dailyRoutine: {
       0: 'snoozing by the embers',
@@ -274,7 +309,6 @@ export const VILLAGERS: Record<string, VillagerDef> = {
     houseWidth: 6,
     houseHeight: 5,
     preferredPlants: ['dogrose', 'hawthorn', 'elder'],
-    // Toad: & idle, &/^ moving, o sleeping
     idleFrames: [
       { cells: [[0, 0, { char: '&', fg: '#5a6a3a' }]] },
       { cells: [[0, 0, { char: '&', fg: '#4a5a2a' }]] },
@@ -287,6 +321,12 @@ export const VILLAGERS: Record<string, VillagerDef> = {
     possessions: [
       'pressed_flower', 'honey_pot', 'teapot', 'notebook',
       'ribbon_spool', 'jam_jar', 'quilt_square', 'button_box',
+    ],
+    recipes: [
+      { name: 'Herbal Tea Blend', description: 'Chamomile, mint, and lavender from the garden' },
+      { name: 'Pond-Weed Salad', description: 'Crisp greens with watercress and wild garlic' },
+      { name: 'Soothing Balm Soup', description: 'A restorative broth of sage, comfrey, and nettle' },
+      { name: 'Rosehip Syrup', description: 'Sweet hedgerow syrup, good for coughs and colds' },
     ],
     dailyRoutine: {
       0: 'snoozing under a dock leaf',

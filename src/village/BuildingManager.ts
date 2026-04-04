@@ -135,20 +135,20 @@ export class BuildingManager {
   }
 
   /**
-   * Place furniture in side-view: large items on floor row, wall items above,
-   * small items on shelves (floor - 1 row).
+   * Place furniture in side-view: stove/large items on floor, personality items
+   * on floor and shelves, then fill the back wall with shelved items.
    */
   private generateSideViewFurniture(
     villager: VillagerDef | undefined,
     exteriorSet: Set<string>,
     minCol: number, maxCol: number,
-    minRow: number, floorRow: number, ceilingRow: number,
+    _minRow: number, floorRow: number, ceilingRow: number,
   ): FurnitureItem[] {
     const furniture: FurnitureItem[] = [];
     const usedCells = new Set<string>();
     const bg = '#2a2218';
 
-    const isFloor = (c: number, r: number) => {
+    const isInterior = (c: number, r: number) => {
       return r >= ceilingRow && r <= floorRow
         && c > minCol && c < maxCol
         && !exteriorSet.has(`${c},${r}`);
@@ -156,95 +156,128 @@ export class BuildingManager {
 
     const place = (id: string, col: number, row: number, glyph: Glyph, permanent = true): boolean => {
       const key = `${col},${row}`;
-      if (usedCells.has(key) || !isFloor(col, row)) return false;
+      if (usedCells.has(key) || !isInterior(col, row)) return false;
       usedCells.add(key);
       furniture.push({ id, colOff: col, rowOff: row, glyph, permanent });
       return true;
     };
 
     // Side-view positions
-    const leftCol = minCol + 1;    // leftmost interior column
-    const rightCol = maxCol - 1;   // rightmost interior column
-    const shelfRow = floorRow - 1; // row above floor for table-top items
-    const wallRow = floorRow - 2;  // higher row for wall-mounted items
+    const leftCol = minCol + 1;
+    const rightCol = maxCol - 1;
+    const shelfRow = floorRow - 1; // just above floor
+    const wallRow = floorRow - 2;  // mid-wall
+    const highRow = floorRow - 3;  // near ceiling
     const centerCol = Math.floor((minCol + maxCol) / 2);
 
-    // ── Common to all: fireplace on left wall ──
-    place('fireplace', leftCol, floorRow, { char: '#', fg: '#dd6633', bg: '#3a1a0a' });
-    // Fire glow above
-    if (wallRow >= ceilingRow) {
-      place('fire_glow', leftCol, shelfRow, { char: '^', fg: '#ee8833', bg: '#3a1a0a' });
-    }
+    // ── Common: stove on left, fireplace behind it ──
+    place('stove', leftCol, floorRow, { char: '#', fg: '#888888', bg: '#2a1a1a' });
+    place('fire_glow', leftCol, shelfRow, { char: '^', fg: '#ee8833', bg: '#3a1a0a' });
 
     const personality = villager?.personality ?? VillagerPersonality.Cozy;
 
+    // ── Floor-level items (personality-specific) ──
     switch (personality) {
       case VillagerPersonality.Cozy:
-        // Armchair by fire, rug on floor, teapot on shelf, cushion, quilt
         place('armchair', leftCol + 1, floorRow, { char: '&', fg: '#bb8855', bg });
         place('rug', centerCol, floorRow, { char: '~', fg: '#994433', bg });
         place('cushion', centerCol + 1, floorRow, { char: 'o', fg: '#cc6666', bg });
-        place('teapot', rightCol, shelfRow, { char: '$', fg: '#ddaa66', bg });
         place('quilt', rightCol, floorRow, { char: '%', fg: '#aa6644', bg }, false);
-        // Wall shelf with kettle
-        if (wallRow >= ceilingRow) {
-          place('kettle', rightCol - 1, wallRow, { char: '$', fg: '#cc8844', bg });
-        }
+        // Shelf row
+        place('teapot', rightCol, shelfRow, { char: '$', fg: '#ddaa66', bg });
+        place('kettle', centerCol, shelfRow, { char: '$', fg: '#cc8844', bg });
+        place('candle', rightCol - 1, shelfRow, { char: 'i', fg: '#eebb44', bg });
+        // Wall
+        place('clock', rightCol, wallRow, { char: 'O', fg: '#aa8855', bg });
+        place('picture', centerCol, wallRow, { char: '#', fg: '#887766', bg });
+        place('preserves', leftCol + 1, wallRow, { char: 'o', fg: '#ddaa44', bg });
+        place('acorn_cup', centerCol + 1, wallRow, { char: 'u', fg: '#aa8855', bg });
+        // High wall
+        place('hanging_herbs', leftCol + 1, highRow, { char: '{', fg: '#5a8a3a', bg });
+        place('cobweb', rightCol, highRow, { char: '*', fg: '#555555', bg });
         break;
 
       case VillagerPersonality.Bookish:
-        // Bookshelves against right wall, desk center, lamp above
-        place('bookshelf', rightCol, floorRow, { char: ']', fg: '#aa7755', bg });
-        place('bookshelf2', rightCol, shelfRow, { char: ']', fg: '#997755', bg });
         place('desk', centerCol, floorRow, { char: '_', fg: '#aa8855', bg });
-        place('lamp', centerCol, shelfRow, { char: '?', fg: '#eebb44', bg });
         place('quill', centerCol + 1, floorRow, { char: '/', fg: '#8888aa', bg });
+        place('bookshelf', rightCol, floorRow, { char: ']', fg: '#aa7755', bg });
         place('spectacles', centerCol - 1, floorRow, { char: '8', fg: '#aaaacc', bg }, false);
-        // Books on wall
-        if (wallRow >= ceilingRow) {
-          place('notebook', rightCol - 1, wallRow, { char: '=', fg: '#aa8866', bg }, false);
-        }
+        // Shelf row
+        place('lamp', centerCol, shelfRow, { char: '?', fg: '#eebb44', bg });
+        place('bookshelf2', rightCol, shelfRow, { char: ']', fg: '#997755', bg });
+        place('acorn_cup', leftCol + 1, shelfRow, { char: 'u', fg: '#aa8855', bg });
+        // Wall
+        place('notebook', rightCol - 1, wallRow, { char: '=', fg: '#aa8866', bg });
+        place('candle', centerCol + 1, wallRow, { char: 'i', fg: '#eebb44', bg });
+        place('picture', leftCol + 1, wallRow, { char: '#', fg: '#887766', bg });
+        place('mirror', centerCol, wallRow, { char: 'O', fg: '#aabbcc', bg });
+        // High wall
+        place('cobweb', rightCol, highRow, { char: '*', fg: '#555555', bg });
+        place('clock', centerCol, highRow, { char: 'O', fg: '#aa8855', bg });
         break;
 
       case VillagerPersonality.Culinary:
-        // Stove left, table center, kettle/pie on shelves, jam on floor
-        place('stove', leftCol + 1, floorRow, { char: '#', fg: '#888888', bg: '#2a1a1a' });
         place('table', centerCol, floorRow, { char: '=', fg: '#aa8855', bg });
-        place('kettle', leftCol + 1, shelfRow, { char: '$', fg: '#cc8844', bg });
-        place('pie', centerCol, shelfRow, { char: 'n', fg: '#ddaa66', bg }, false);
         place('jam_jar', rightCol, floorRow, { char: 'o', fg: '#cc4466', bg });
         place('flour', rightCol - 1, floorRow, { char: '%', fg: '#ccccaa', bg }, false);
-        // Hanging pots on wall
-        if (wallRow >= ceilingRow) {
-          place('cake_stand', centerCol + 1, wallRow, { char: 'T', fg: '#ccaa88', bg }, false);
-        }
+        place('basket_shelf', leftCol + 1, floorRow, { char: 'U', fg: '#aa8855', bg });
+        // Shelf row — pantry items
+        place('kettle', leftCol + 1, shelfRow, { char: '$', fg: '#cc8844', bg });
+        place('pie', centerCol, shelfRow, { char: 'n', fg: '#ddaa66', bg }, false);
+        place('honey_pot', rightCol, shelfRow, { char: 'o', fg: '#ddaa44', bg });
+        place('rolling_pin', centerCol + 1, shelfRow, { char: '=', fg: '#bb9966', bg });
+        // Wall — shelves with pantry
+        place('preserves', leftCol + 1, wallRow, { char: 'o', fg: '#ddaa44', bg });
+        place('dried_berries', centerCol, wallRow, { char: ':', fg: '#cc4466', bg });
+        place('spice_rack', centerCol + 1, wallRow, { char: '!', fg: '#aa7744', bg });
+        place('copper_pan', rightCol, wallRow, { char: 'Q', fg: '#cc8844', bg });
+        place('cheese_wheel', rightCol - 1, wallRow, { char: 'O', fg: '#ddcc55', bg }, false);
+        // High wall
+        place('hanging_herbs', centerCol - 1, highRow, { char: '{', fg: '#5a8a3a', bg });
+        place('ladle', leftCol + 1, highRow, { char: 'J', fg: '#aaaaaa', bg });
+        place('acorn_cup', rightCol, highRow, { char: 'u', fg: '#aa8855', bg });
+        place('cake_stand', centerCol + 1, highRow, { char: 'T', fg: '#ccaa88', bg }, false);
         break;
 
       case VillagerPersonality.Crafty:
-        // Workbench center, yarn left, fabric right
         place('workbench', centerCol, floorRow, { char: '=', fg: '#aa8855', bg });
         place('yarn', leftCol + 1, floorRow, { char: '@', fg: '#cc6688', bg });
         place('needle_cushion', centerCol + 1, floorRow, { char: 'o', fg: '#dd8866', bg });
-        place('scissors', centerCol, shelfRow, { char: 'X', fg: '#aaaacc', bg });
         place('fabric', rightCol, floorRow, { char: '%', fg: '#88aacc', bg }, false);
         place('thimble', rightCol - 1, floorRow, { char: 'u', fg: '#ccaa88', bg }, false);
-        // Ribbon on wall
-        if (wallRow >= ceilingRow) {
-          place('ribbon_spool', rightCol, wallRow, { char: '@', fg: '#cc88aa', bg }, false);
-        }
+        // Shelf row
+        place('scissors', centerCol, shelfRow, { char: 'X', fg: '#aaaacc', bg });
+        place('ribbon_spool', rightCol, shelfRow, { char: '@', fg: '#cc88aa', bg });
+        place('candle', leftCol + 1, shelfRow, { char: 'i', fg: '#eebb44', bg });
+        // Wall
+        place('spool_rack', rightCol, wallRow, { char: '|', fg: '#cc88aa', bg });
+        place('pattern_board', centerCol, wallRow, { char: '#', fg: '#aabb88', bg });
+        place('hat_peg', leftCol + 1, wallRow, { char: 'T', fg: '#8a7a5a', bg });
+        place('tiny_hat', leftCol + 2, wallRow, { char: '^', fg: '#aa6688', bg }, false);
+        // High wall
+        place('cobweb', rightCol, highRow, { char: '*', fg: '#555555', bg });
+        place('wood_shavings', centerCol + 1, highRow, { char: '~', fg: '#ccaa77', bg });
+        place('dried_flowers', centerCol - 1, highRow, { char: '*', fg: '#cc88aa', bg });
         break;
 
       case VillagerPersonality.Gardener:
-        // Plant pots on floor, watering can, seed box, herbs above
         place('plant_pot', centerCol, floorRow, { char: 'Y', fg: '#5aaa4a', bg });
         place('plant_pot2', centerCol + 1, floorRow, { char: 'Y', fg: '#6aba5a', bg });
         place('watering_can', leftCol + 1, floorRow, { char: 'J', fg: '#88aacc', bg });
         place('seed_box', rightCol, floorRow, { char: '[', fg: '#aa8855', bg });
-        place('herbs', centerCol - 1, shelfRow, { char: '{', fg: '#4a8a3a', bg }, false);
-        // Flowers on wall
-        if (wallRow >= ceilingRow) {
-          place('flower', rightCol - 1, wallRow, { char: '*', fg: '#ddaa88', bg }, false);
-        }
+        // Shelf row
+        place('herbs', centerCol - 1, shelfRow, { char: '{', fg: '#4a8a3a', bg });
+        place('terracotta', rightCol, shelfRow, { char: 'U', fg: '#cc6633', bg });
+        place('trowel', leftCol + 1, shelfRow, { char: '/', fg: '#888888', bg });
+        // Wall
+        place('dried_flowers', centerCol, wallRow, { char: '*', fg: '#cc88aa', bg });
+        place('herb_bundle', rightCol, wallRow, { char: '}', fg: '#5a8a3a', bg });
+        place('preserves', leftCol + 1, wallRow, { char: 'o', fg: '#ddaa44', bg });
+        place('acorn_cup', centerCol + 1, wallRow, { char: 'u', fg: '#aa8855', bg });
+        // High wall
+        place('hanging_herbs', centerCol - 1, highRow, { char: '{', fg: '#5a8a3a', bg });
+        place('flower', rightCol - 1, highRow, { char: '*', fg: '#ddaa88', bg });
+        place('cobweb', rightCol, highRow, { char: '*', fg: '#555555', bg });
         break;
     }
 

@@ -1,0 +1,93 @@
+import { BuildModeState } from '@/types';
+import type { BuildModeContext, HouseState, Glyph } from '@/types';
+import { BUILD_PALETTE } from '@/data/buildPalette';
+
+/**
+ * State machine for build mode: palette navigation, cursor movement, glyph selection.
+ */
+export class BuildModeController {
+  private context: BuildModeContext = {
+    state: BuildModeState.Browsing,
+    activeHouseId: null,
+    selectedGlyph: null,
+    selectedCategory: 0,
+    selectedIndex: 0,
+    cursorCol: 0,
+    cursorRow: 0,
+  };
+
+  getState(): BuildModeState {
+    return this.context.state;
+  }
+
+  getContext(): Readonly<BuildModeContext> {
+    return this.context;
+  }
+
+  // ── State transitions ──
+
+  enterBuildMode(houseId: number): void {
+    this.context.state = BuildModeState.Building;
+    this.context.activeHouseId = houseId;
+    this.context.selectedCategory = 0;
+    this.context.selectedIndex = 0;
+    this.context.selectedGlyph = BUILD_PALETTE[0].items[0] ?? null;
+  }
+
+  exitBuildMode(): void {
+    this.context.state = BuildModeState.Browsing;
+    this.context.activeHouseId = null;
+    this.context.selectedGlyph = null;
+  }
+
+  enterInteriorView(houseId: number): void {
+    this.context.state = BuildModeState.ViewingInterior;
+    this.context.activeHouseId = houseId;
+  }
+
+  exitInteriorView(): void {
+    this.context.state = BuildModeState.Browsing;
+    this.context.activeHouseId = null;
+  }
+
+  // ── Cursor ──
+
+  setCursor(col: number, row: number): void {
+    this.context.cursorCol = col;
+    this.context.cursorRow = row;
+  }
+
+  moveCursor(dc: number, dr: number, house: HouseState): void {
+    const newCol = this.context.cursorCol + dc;
+    const newRow = this.context.cursorRow + dr;
+    if (newCol >= 0 && newCol < house.width && newRow >= 0 && newRow < house.height) {
+      this.context.cursorCol = newCol;
+      this.context.cursorRow = newRow;
+    }
+  }
+
+  // ── Palette navigation ──
+
+  selectCategory(index: number): void {
+    if (index >= 0 && index < BUILD_PALETTE.length) {
+      this.context.selectedCategory = index;
+      this.context.selectedIndex = 0;
+      this.context.selectedGlyph = BUILD_PALETTE[index].items[0] ?? null;
+    }
+  }
+
+  nextItem(): void {
+    const cat = BUILD_PALETTE[this.context.selectedCategory];
+    if (!cat) return;
+    this.context.selectedIndex = (this.context.selectedIndex + 1) % cat.items.length;
+    this.context.selectedGlyph = cat.items[this.context.selectedIndex];
+  }
+
+  prevItem(): void {
+    const cat = BUILD_PALETTE[this.context.selectedCategory];
+    if (!cat) return;
+    this.context.selectedIndex =
+      (this.context.selectedIndex - 1 + cat.items.length) % cat.items.length;
+    this.context.selectedGlyph = cat.items[this.context.selectedIndex];
+  }
+}

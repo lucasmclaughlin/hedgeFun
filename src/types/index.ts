@@ -10,8 +10,10 @@ export enum OverlayLayer {
   Terrain = 0,
   Stars = 5,
   Plant = 10,
+  Building = 15,
   Creature = 20,
   Weather = 30,
+  BuildUI = 35,
 }
 
 /** Vertical layer zones in the hedgerow world */
@@ -420,4 +422,109 @@ export interface SaveData {
   viewMode: ViewMode;
   starSeed?: number;
   terrainSeed?: number;
+}
+
+// ── hedgeFriends: Village mode ──────────────────────────────
+
+/** Building construction phase */
+export enum BuildPhase {
+  SiteMarked = 0,
+  Building = 1,
+  Complete = 2,
+}
+
+/** Villager personality — affects interior generation and daily routine */
+export enum VillagerPersonality {
+  Cozy = 0,
+  Bookish = 1,
+  Culinary = 2,
+  Crafty = 3,
+  Gardener = 4,
+}
+
+/** Build mode sub-states */
+export enum BuildModeState {
+  Browsing = 0,
+  Building = 1,
+  ViewingInterior = 2,
+}
+
+/** A single placed glyph in a building (offset from anchor) */
+export interface BuildingCell {
+  colOff: number;
+  rowOff: number;
+  glyph: Glyph;
+}
+
+/** A piece of furniture/item inside a house */
+export interface FurnitureItem {
+  id: string;
+  colOff: number;
+  rowOff: number;
+  glyph: Glyph;
+  permanent: boolean;
+}
+
+/** A villager's house */
+export interface HouseState {
+  id: number;
+  villagerId: string;
+  anchorCol: number;
+  anchorRow: number;
+  width: number;
+  height: number;
+  phase: BuildPhase;
+  exterior: BuildingCell[];
+  interior: BuildingCell[];
+  furniture: FurnitureItem[];
+}
+
+/** Villager species definition */
+export interface VillagerDef {
+  id: string;
+  name: string;
+  species: string;
+  personality: VillagerPersonality;
+  nestingLayer: Layer;
+  houseWidth: number;
+  houseHeight: number;
+  preferredPlants: string[];
+  homeGlyph: Glyph;
+  walkingGlyphs: Glyph[];
+  possessions: string[];
+  dailyRoutine: Record<number, string>;
+  visitPreferences: string[];
+  description: string;
+}
+
+/** Runtime state of a villager */
+export interface VillagerState {
+  defId: string;
+  houseId: number;
+  activity: string;
+  col: number;
+  row: number;
+  isHome: boolean;
+  visitingHouseId: number | null;
+  facing: number;
+  frameIndex: number;
+  animTimer: number;
+  moveTimer: number;
+}
+
+/** Build mode context */
+export interface BuildModeContext {
+  state: BuildModeState;
+  activeHouseId: number | null;
+  selectedGlyph: Glyph | null;
+  selectedCategory: number;
+  selectedIndex: number;
+  cursorCol: number;
+  cursorRow: number;
+}
+
+/** A category of building glyphs in the palette */
+export interface PaletteCategory {
+  name: string;
+  items: Glyph[];
 }

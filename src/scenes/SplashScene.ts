@@ -328,15 +328,24 @@ export class SplashScene extends Phaser.Scene {
     this.importText.on('pointerout', () => this.importText.setColor(btnBaseColor));
     this.importText.on('pointerdown', () => this.importSave());
 
+    // hedgeFriends mode button
+    const villageText = this.add.text(cx, btnY + 36, '[ hedgeFriends ]', {
+      ...btnStyle,
+      color: '#88aa88',
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+    villageText.on('pointerover', () => villageText.setColor('#ccddcc'));
+    villageText.on('pointerout', () => villageText.setColor('#88aa88'));
+    villageText.on('pointerdown', () => this.scene.start('VillageScene'));
+
     // Keyboard shortcuts hint
     if (hasSave) {
-      this.add.text(cx, btnY + 30, 'C = continue  ·  I = import save', {
+      this.add.text(cx, btnY + 68, 'C = continue  ·  I = import save  ·  F = hedgeFriends', {
         fontFamily: 'Courier New, monospace',
         fontSize: '11px',
         color: '#555555',
       }).setOrigin(0.5);
     } else {
-      this.add.text(cx, btnY + 30, 'I = import save', {
+      this.add.text(cx, btnY + 68, 'I = import save  ·  F = hedgeFriends', {
         fontFamily: 'Courier New, monospace',
         fontSize: '11px',
         color: '#555555',
@@ -357,6 +366,10 @@ export class SplashScene extends Phaser.Scene {
         }
         if (event.key === 'i' || event.key === 'I') {
           this.importSave();
+          return;
+        }
+        if (event.key === 'f' || event.key === 'F') {
+          this.scene.start('VillageScene');
           return;
         }
       }

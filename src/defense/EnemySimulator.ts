@@ -1,15 +1,7 @@
 // Stub — real implementation provided by hedgeKingdoms EnemySimulator unit
-import type { PlantState } from '@/types';
+import type { PlantState, EnemyDef } from '@/types';
 
-export interface EnemyDef {
-  id: string;
-  name: string;
-  hp: number;
-  speed: number;
-  damage: number;
-  char: string;
-  fg: string;
-}
+export type { EnemyDef };
 
 export interface EnemyInstance {
   id: string;
@@ -39,8 +31,8 @@ export class EnemySimulator {
         defId: def.id,
         col: 199,
         row: 20,
-        hp: def.hp,
-        maxHp: def.hp,
+        hp: def.maxHp,
+        maxHp: def.maxHp,
       });
     }
   }

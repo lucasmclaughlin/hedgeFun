@@ -26,9 +26,9 @@ import { EnemyRenderer } from '@/defense/EnemyRenderer';
 import { DefenderCombatSystem } from '@/defense/DefenderCombatSystem';
 import { BattleEffectRenderer } from '@/defense/BattleEffectRenderer';
 import { FortificationManager } from '@/defense/FortificationManager';
+import { seedKingdomsHedge } from '@/defense/KingdomsStarter';
 import { KingdomsHudRenderer } from '@/ui/KingdomsHudRenderer';
 import { FortificationUI } from '@/ui/FortificationUI';
-import { seedKingdomsHedge } from '@/defense/KingdomsStarter';
 import { ENEMIES } from '@/data/enemies';
 import type { EnemyDef } from '@/defense/EnemySimulator';
 
@@ -418,6 +418,10 @@ export class GameScene extends Phaser.Scene {
       }
       if (waveEvent === 'game-over') {
         this.exitKingdomsMode();
+        return; // skip rest of frame
+      }
+      if (waveEvent === 'campaign-complete') {
+        this.onCampaignVictory();
         return; // skip rest of frame
       }
 
@@ -870,8 +874,13 @@ export class GameScene extends Phaser.Scene {
   // ── hedgeKingdoms mode ──
 
   private enterKingdomsMode(): void {
+    if (this.growthSim.getPlants().length === 0) {
+      seedKingdomsHedge(this.growthSim, this.creatureSim, this.terrainMap, this.timeClock);
+      const period = this.timeClock.getCurrentPeriod();
+      this.plantRenderer.renderPlants(this.growthSim.getPlants(), period.season);
+      this.defenderCombat.registerCreatures(this.creatureSim.getCreatures());
+    }
     this.kingdomsActive = true;
-    seedKingdomsHedge(this.growthSim, this.creatureSim, this.terrainMap, this.timeClock);
     this.waveManager.start();
     this.kingdomsHud.setVisible(true);
     this.hudRenderer.showMessage('The hedge is under attack! Defend it!');
@@ -885,6 +894,22 @@ export class GameScene extends Phaser.Scene {
     this.battleFx.clear();
     this.kingdomsActive = false;
     // Keep kingdomsHud visible to show game-over screen; hide after delay or on keypress
+  }
+
+  private onCampaignVictory(): void {
+    const plants = this.growthSim.getPlants();
+    saveHighScore({
+      name: this.playerName,
+      plants: plants.length,
+      creatures: this.creatureSim.getTotalCount(),
+      periods: this.timeClock.getTotalPeriods(),
+      score: 10000 + this.biodiversityTracker.getScore(),
+    });
+    this.kingdomsHud.showVictory(10);
+    this.kingdomsActive = false;
+    this.enemySim.clear();
+    this.enemyRenderer.clear();
+    this.battleFx.clear();
   }
 
   private cycleFortType(): void {

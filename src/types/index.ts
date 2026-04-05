@@ -11,6 +11,7 @@ export enum OverlayLayer {
   Stars = 5,
   Plant = 10,
   Building = 15,
+  Fortification = 17,
   Creature = 20,
   Battle = 25,
   Weather = 30,

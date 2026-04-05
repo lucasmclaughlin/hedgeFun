@@ -20,6 +20,16 @@ import { getCompanionRelationships } from '@/simulation/companionPlanting';
 import { SPECIES_LIST } from '@/data/species';
 import { saveHighScore } from '@/scenes/SplashScene';
 import type { PlantState, CreatureState, SaveData } from '@/types';
+import { WaveManager } from '@/defense/WaveManager';
+import { EnemySimulator } from '@/defense/EnemySimulator';
+import { EnemyRenderer } from '@/defense/EnemyRenderer';
+import { DefenderCombatSystem } from '@/defense/DefenderCombatSystem';
+import { BattleEffectRenderer } from '@/defense/BattleEffectRenderer';
+import { FortificationManager } from '@/defense/FortificationManager';
+import { KingdomsHudRenderer } from '@/ui/KingdomsHudRenderer';
+import { FortificationUI } from '@/ui/FortificationUI';
+import { ENEMIES } from '@/data/enemies';
+import type { EnemyDef } from '@/defense/EnemySimulator';
 
 /** Auto-save every 12 periods (1 full year) */
 const AUTO_SAVE_INTERVAL = 12;
@@ -83,6 +93,19 @@ export class GameScene extends Phaser.Scene {
   // Star map
   private starMap!: StarMap;
   private starSeed = 0;
+
+  // hedgeKingdoms defense mode
+  private kingdomsActive = false;
+  private waveManager!: WaveManager;
+  private enemySim!: EnemySimulator;
+  private enemyRenderer!: EnemyRenderer;
+  private defenderCombat!: DefenderCombatSystem;
+  private battleFx!: BattleEffectRenderer;
+  private kingdomsHud!: KingdomsHudRenderer;
+  private fortManager!: FortificationManager;
+  private fortUI!: FortificationUI;
+  private currentFortType: 'wall' | 'watchtower' | 'gate' = 'wall';
+  private ENEMY_MAP: Record<string, EnemyDef> = {};
 
   constructor() {
     super({ key: 'GameScene' });
@@ -260,6 +283,18 @@ export class GameScene extends Phaser.Scene {
 
     // Apply initial view mode (Hedge view by default)
     this.applyViewMode();
+
+    // hedgeKingdoms systems
+    this.waveManager = new WaveManager();
+    this.enemySim = new EnemySimulator();
+    this.enemyRenderer = new EnemyRenderer(this.asciiRenderer);
+    this.defenderCombat = new DefenderCombatSystem();
+    this.battleFx = new BattleEffectRenderer(this.asciiRenderer);
+    this.fortManager = new FortificationManager();
+    this.kingdomsHud = new KingdomsHudRenderer(this);
+    this.fortUI = new FortificationUI(this.asciiRenderer);
+    this.ENEMY_MAP = Object.fromEntries(Object.values(ENEMIES).map(e => [e.id, e]));
+    this.cameras.main.ignore(this.kingdomsHud.getAllObjects());
   }
 
   update(_time: number, delta: number): void {
@@ -338,6 +373,58 @@ export class GameScene extends Phaser.Scene {
       this.creatureSim.updateCreatures(delta);
     }
     this.creatureRenderer.renderCreatures(this.creatureSim.getCreatures());
+
+    // ── hedgeKingdoms update ──────────────────────────────────────────────
+    if (this.kingdomsActive) {
+      const enemies = this.enemySim.getEnemies();
+      const simEvents = this.enemySim.update(delta, this.growthSim.getPlants());
+      const defEvents = this.defenderCombat.update(
+        enemies,
+        this.creatureSim.getCreatures(),
+        delta,
+        this.timeClock.getDayHourIndex(),
+      );
+
+      for (const e of defEvents) {
+        if (e.type === 'hit-enemy') {
+          this.enemySim.applyDamage(e.enemyId, e.damage);
+          this.battleFx.addEffect(e.effect);
+        }
+        if (e.type === 'alarm') {
+          this.waveManager.addPrepTime(e.prepBonusMs);
+        }
+      }
+
+      for (const e of simEvents) {
+        if (e.type === 'defeated') this.waveManager.enemyDefeated();
+        if (e.type === 'breached') this.waveManager.enemyBreached(e.damage);
+      }
+
+      const waveEvent = this.waveManager.update(delta);
+      const waveState = this.waveManager.getState();
+      if (waveEvent === 'wave-start') {
+        const ids = this.waveManager.getEnemyIdsForWave(waveState.waveNumber);
+        const defs = ids.map(id => this.ENEMY_MAP[id]).filter(Boolean);
+        this.enemySim.spawn(defs);
+        this.defenderCombat.registerCreatures(this.creatureSim.getCreatures());
+      }
+      if (waveEvent === 'wave-complete') {
+        this.kingdomsHud.showWaveClear(waveState.waveNumber - 1);
+      }
+      if (waveEvent === 'game-over') {
+        this.exitKingdomsMode();
+        return; // skip rest of frame
+      }
+
+      const nearCentre = enemies.some(e => e.col >= 80 && e.col <= 120);
+      this.kingdomsHud.showBattleAlert(nearCentre);
+
+      this.battleFx.update(delta);
+      this.battleFx.render();
+      this.enemyRenderer.render(enemies, this.ENEMY_MAP);
+      this.fortUI.render(this.fortManager.getFortifications());
+      this.kingdomsHud.update(waveState, this.defenderCombat.getDefenders(), delta);
+    }
 
     // Update companion relationships for hovered plant
     if (this.hoveredPlant) {
@@ -492,6 +579,22 @@ export class GameScene extends Phaser.Scene {
           this.exitRealtimeMode();
         } else {
           void this.enterRealtimeMode();
+        }
+        break;
+
+      // hedgeKingdoms — toggle kingdoms mode
+      case 'x': case 'X':
+        if (this.kingdomsActive) {
+          this.exitKingdomsMode();
+        } else {
+          this.enterKingdomsMode();
+        }
+        break;
+
+      // hedgeKingdoms — cycle fortification type
+      case 'f': case 'F':
+        if (this.kingdomsActive) {
+          this.cycleFortType();
         }
         break;
     }
@@ -757,6 +860,32 @@ export class GameScene extends Phaser.Scene {
       return;
     }
     this.scene.start('GameScene', { playerName: save.playerName || this.playerName, loadSave: save });
+  }
+
+  // ── hedgeKingdoms mode ──
+
+  private enterKingdomsMode(): void {
+    this.kingdomsActive = true;
+    this.waveManager.start();
+    this.kingdomsHud.setVisible(true);
+    this.hudRenderer.showMessage('The hedge is under attack! Defend it!');
+  }
+
+  private exitKingdomsMode(): void {
+    const wavesReached = this.waveManager.getState().waveNumber;
+    this.kingdomsHud.showGameOver(wavesReached);
+    this.enemySim.clear();
+    this.enemyRenderer.clear();
+    this.battleFx.clear();
+    this.kingdomsActive = false;
+    // Keep kingdomsHud visible to show game-over screen; hide after delay or on keypress
+  }
+
+  private cycleFortType(): void {
+    const types: Array<'wall' | 'watchtower' | 'gate'> = ['wall', 'watchtower', 'gate'];
+    const idx = types.indexOf(this.currentFortType);
+    this.currentFortType = types[(idx + 1) % types.length];
+    this.hudRenderer.showMessage(`Fortification: ${this.currentFortType}`);
   }
 
   // ── Screenshot mode ──

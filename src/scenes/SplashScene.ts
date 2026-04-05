@@ -329,7 +329,7 @@ export class SplashScene extends Phaser.Scene {
     this.importText.on('pointerdown', () => this.importSave());
 
     // hedgeFriends mode button
-    const villageText = this.add.text(cx, btnY + 36, '[ hedgeFriends ]', {
+    const villageText = this.add.text(cx - 95, btnY + 36, '[ hedgeFriends ]', {
       ...btnStyle,
       color: '#88aa88',
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
@@ -337,20 +337,22 @@ export class SplashScene extends Phaser.Scene {
     villageText.on('pointerout', () => villageText.setColor('#88aa88'));
     villageText.on('pointerdown', () => this.scene.start('VillageScene'));
 
+    // hedgeKingdoms mode button
+    const kingdomsText = this.add.text(cx + 95, btnY + 36, '[ hedgeKingdoms ]', {
+      ...btnStyle,
+      color: '#c8884a',
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+    kingdomsText.on('pointerover', () => kingdomsText.setColor('#e8b47a'));
+    kingdomsText.on('pointerout', () => kingdomsText.setColor('#c8884a'));
+    kingdomsText.on('pointerdown', () => this.startKingdomsMode());
+
     // Keyboard shortcuts hint
-    if (hasSave) {
-      this.add.text(cx, btnY + 68, 'C = continue  ·  I = import save  ·  F = hedgeFriends', {
-        fontFamily: 'Courier New, monospace',
-        fontSize: '11px',
-        color: '#555555',
-      }).setOrigin(0.5);
-    } else {
-      this.add.text(cx, btnY + 68, 'I = import save  ·  F = hedgeFriends', {
-        fontFamily: 'Courier New, monospace',
-        fontSize: '11px',
-        color: '#555555',
-      }).setOrigin(0.5);
-    }
+    const shortcutPrefix = hasSave ? 'C = continue  ·  I = import save' : 'I = import save';
+    this.add.text(cx, btnY + 68, `${shortcutPrefix}  ·  F = hedgeFriends  ·  K = hedgeKingdoms`, {
+      fontFamily: 'Courier New, monospace',
+      fontSize: '11px',
+      color: '#555555',
+    }).setOrigin(0.5);
 
     // Keyboard input for name + shortcuts
     this.input.keyboard!.on('keydown', (event: KeyboardEvent) => {
@@ -370,6 +372,10 @@ export class SplashScene extends Phaser.Scene {
         }
         if (event.key === 'f' || event.key === 'F') {
           this.scene.start('VillageScene');
+          return;
+        }
+        if (event.key === 'k' || event.key === 'K') {
+          this.startKingdomsMode();
           return;
         }
       }
@@ -448,5 +454,12 @@ export class SplashScene extends Phaser.Scene {
     const save = await this.saveManager.promptImport();
     if (!save) return;
     this.scene.start('GameScene', { playerName: save.playerName || 'Player', loadSave: save });
+  }
+
+  private startKingdomsMode(): void {
+    this.scene.start('GameScene', {
+      playerName: this.playerName || 'Defender',
+      kingdomsMode: true,
+    });
   }
 }

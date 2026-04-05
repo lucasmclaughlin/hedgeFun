@@ -28,6 +28,7 @@ import { BattleEffectRenderer } from '@/defense/BattleEffectRenderer';
 import { FortificationManager } from '@/defense/FortificationManager';
 import { KingdomsHudRenderer } from '@/ui/KingdomsHudRenderer';
 import { FortificationUI } from '@/ui/FortificationUI';
+import { seedKingdomsHedge } from '@/defense/KingdomsStarter';
 import { ENEMIES } from '@/data/enemies';
 import type { EnemyDef } from '@/defense/EnemySimulator';
 
@@ -106,13 +107,15 @@ export class GameScene extends Phaser.Scene {
   private fortUI!: FortificationUI;
   private currentFortType: 'wall' | 'watchtower' | 'gate' = 'wall';
   private ENEMY_MAP: Record<string, EnemyDef> = {};
+  private autoStartKingdoms = false;
 
   constructor() {
     super({ key: 'GameScene' });
   }
 
-  init(data: { playerName?: string; loadSave?: SaveData }): void {
+  init(data: { playerName?: string; loadSave?: SaveData; kingdomsMode?: boolean }): void {
     this.playerName = data?.playerName || 'Player';
+    this.autoStartKingdoms = data?.kingdomsMode ?? false;
   }
 
   create(): void {
@@ -295,6 +298,8 @@ export class GameScene extends Phaser.Scene {
     this.fortUI = new FortificationUI(this.asciiRenderer);
     this.ENEMY_MAP = Object.fromEntries(Object.values(ENEMIES).map(e => [e.id, e]));
     this.cameras.main.ignore(this.kingdomsHud.getAllObjects());
+
+    if (this.autoStartKingdoms) this.enterKingdomsMode();
   }
 
   update(_time: number, delta: number): void {
@@ -866,6 +871,7 @@ export class GameScene extends Phaser.Scene {
 
   private enterKingdomsMode(): void {
     this.kingdomsActive = true;
+    seedKingdomsHedge(this.growthSim, this.creatureSim, this.terrainMap, this.timeClock);
     this.waveManager.start();
     this.kingdomsHud.setVisible(true);
     this.hudRenderer.showMessage('The hedge is under attack! Defend it!');

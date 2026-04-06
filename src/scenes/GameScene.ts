@@ -1070,6 +1070,7 @@ export class GameScene extends Phaser.Scene {
     if (this.kingdomsSettings) {
       const { scenario, difficulty, speed } = this.kingdomsSettings;
       const SCENARIO_START_WAVE: Record<string, number> = {
+        young_hedge: 1,
         ancient_hedgerow: 1,
         last_stand: 5,
         winter_siege: 10,

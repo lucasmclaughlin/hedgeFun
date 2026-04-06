@@ -55,14 +55,19 @@ function makeInitialState(): WaveState {
   };
 }
 
+export type Difficulty = 'easy' | 'normal' | 'hard';
+
+const LIVES_BY_DIFFICULTY: Record<Difficulty, number> = { easy: 8, normal: 5, hard: 3 };
+
 export class WaveManager {
   private state: WaveState = makeInitialState();
+  private difficulty: Difficulty = 'normal';
 
   start(): void {
     this.state.waveNumber = 1;
     this.state.phase = 'prep';
     this.state.prepMsRemaining = getPrepMsForWave(1);
-    this.state.lives = 5;
+    this.state.lives = LIVES_BY_DIFFICULTY[this.difficulty];
     this.state.enemiesRemainingInWave = 0;
   }
 
@@ -134,5 +139,23 @@ export class WaveManager {
     if (this.state.phase === 'prep') {
       this.state.prepMsRemaining += ms;
     }
+  }
+
+  setDifficulty(level: Difficulty): void {
+    this.difficulty = level;
+  }
+
+  getDifficulty(): Difficulty {
+    return this.difficulty;
+  }
+
+  /** Start the campaign at a specific wave number (skipping earlier waves) */
+  startAtWave(wave: number): void {
+    const clamped = Math.max(1, Math.min(wave, TOTAL_WAVES));
+    this.state.waveNumber = clamped;
+    this.state.phase = 'prep';
+    this.state.prepMsRemaining = getPrepMsForWave(clamped);
+    this.state.lives = LIVES_BY_DIFFICULTY[this.difficulty];
+    this.state.enemiesRemainingInWave = 0;
   }
 }

@@ -786,8 +786,7 @@ export class GameScene extends Phaser.Scene {
         break;
       case 'Escape':
         if (this.battleCameraMode) {
-          this.battleCameraMode = false;
-          this.battleCameraIndex = -1;
+          this.disableBattleCamera();
           this.applyViewMode();
           this.hudRenderer.showMessage('Battle Camera OFF');
           break;
@@ -922,6 +921,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private cycleViewMode(): void {
+    this.disableBattleCamera();
     this.viewMode = (this.viewMode + 1) % 3 as ViewMode;
     this.applyViewMode();
     const names = ['Hedge', 'Underground', 'Full'];
@@ -1137,6 +1137,12 @@ export class GameScene extends Phaser.Scene {
     [DefenderRole.Harrier]:     { char: 'v', fg: '#70a0d0', bg: '#101828' },
   };
 
+  private disableBattleCamera(): void {
+    if (!this.battleCameraMode) return;
+    this.battleCameraMode = false;
+    this.battleCameraIndex = -1;
+  }
+
   private updateBattleCamera(enemies: readonly EnemyState[]): void {
     if (enemies.length === 0) return;
 
@@ -1147,6 +1153,11 @@ export class GameScene extends Phaser.Scene {
     const cam = this.cameras.main;
     const cw = GRID_CONFIG.cellWidth;
     const ch = GRID_CONFIG.cellHeight;
+    const worldWidth = this.asciiRenderer.getWorldWidth();
+    const worldHeight = GRID_CONFIG.rows * ch;
+
+    // Expand bounds so the camera can pan to any enemy position
+    cam.setBounds(0, 0, worldWidth, worldHeight);
 
     // Zoom in to ~30 cols — tight on the action
     const targetZoom = cam.width / (30 * cw);
@@ -1214,6 +1225,7 @@ export class GameScene extends Phaser.Scene {
   // ── Screenshot mode ──
 
   private enterScreenshotMode(): void {
+    this.disableBattleCamera();
     this.screenshotMode = true;
 
     // Hide HUD and cursor

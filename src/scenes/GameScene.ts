@@ -30,6 +30,7 @@ import { SPECIES_BONUSES, applyThornDamage, applyHealingBerries } from '@/defens
 import { KingdomsHudRenderer } from '@/ui/KingdomsHudRenderer';
 import { FortificationUI } from '@/ui/FortificationUI';
 import { ENEMIES } from '@/data/enemies';
+import { seedKingdomsHedge } from '@/defense/KingdomsStarter';
 
 
 /** Auto-save every 12 periods (1 full year) */
@@ -129,6 +130,7 @@ export class GameScene extends Phaser.Scene {
   private currentFortType: 'wall' | 'watchtower' | 'gate' = 'wall';
   private ENEMY_MAP: Record<string, EnemyDef> = {};
   private autoStartKingdoms = false;
+  private kingdomsSettings: { scenario: string; difficulty: string; speed: number } | null = null;
   private defenderOverlayCells: Array<[number, number]> = [];
   private selectedCreatureId: number | null = null;
   private defenderAssignments = new Map<number, number>();  // creatureId → plantCol
@@ -143,9 +145,15 @@ export class GameScene extends Phaser.Scene {
     super({ key: 'GameScene' });
   }
 
-  init(data: { playerName?: string; loadSave?: SaveData; kingdomsMode?: boolean }): void {
+  init(data: {
+    playerName?: string;
+    loadSave?: SaveData;
+    kingdomsMode?: boolean;
+    kingdomsSettings?: { scenario: string; difficulty: string; speed: number };
+  }): void {
     this.playerName = data?.playerName || 'Player';
     this.autoStartKingdoms = data?.kingdomsMode ?? false;
+    this.kingdomsSettings = data?.kingdomsSettings ?? null;
   }
 
   create(): void {
@@ -905,7 +913,12 @@ export class GameScene extends Phaser.Scene {
       periods: this.timeClock.getTotalPeriods(),
       score: this.biodiversityTracker.getScore(),
     });
-    this.scene.start('SplashScene');
+
+    if (this.kingdomsActive || this.autoStartKingdoms) {
+      this.scene.start('KingdomsSplashScene');
+    } else {
+      this.scene.start('SplashScene');
+    }
   }
 
   private cycleViewMode(): void {
@@ -1053,8 +1066,34 @@ export class GameScene extends Phaser.Scene {
 
   private enterKingdomsMode(): void {
     this.kingdomsActive = true;
+
+    if (this.kingdomsSettings) {
+      const { scenario, difficulty, speed } = this.kingdomsSettings;
+      const SCENARIO_START_WAVE: Record<string, number> = {
+        ancient_hedgerow: 1,
+        last_stand: 5,
+        winter_siege: 10,
+      };
+
+      this.waveManager.setDifficulty(difficulty);
+      this.timeClock.setSpeedIndex(speed);
+
+      // Non-default scenarios get a pre-built mature hedge
+      const startWave = SCENARIO_START_WAVE[scenario];
+      if (startWave !== undefined) {
+        seedKingdomsHedge(this.growthSim, this.creatureSim, this.terrainMap, this.timeClock);
+        const period = this.timeClock.getCurrentPeriod();
+        this.plantRenderer.renderPlants(this.growthSim.getPlants(), period.season);
+        if (startWave > 1) {
+          this.waveManager.startAtWave(startWave);
+        }
+      }
+    }
+
     this.defenderCombat.registerCreatures(this.creatureSim.getCreatures());
-    this.waveManager.start();
+    if (!this.waveManager.isActive()) {
+      this.waveManager.start();
+    }
     this.kingdomsHud.setVisible(true);
     this.hudRenderer.showMessage('The hedge is under attack! Click a creature, then right-click a plant to assign defenders.');
   }

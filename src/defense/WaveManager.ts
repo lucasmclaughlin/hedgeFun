@@ -38,6 +38,10 @@ const WAVE_TABLE: ReadonlyArray<readonly string[]> = [
 
 const TOTAL_WAVES = WAVE_TABLE.length;
 
+const DIFFICULTY_HP: Record<string, number> = { peaceful: 0.5, normal: 1, hard: 1.5, legendary: 2 };
+const DIFFICULTY_SPEED: Record<string, number> = { peaceful: 0.7, normal: 1, hard: 1.2, legendary: 1.5 };
+const DIFFICULTY_LIVES: Record<string, number> = { peaceful: 7, normal: 5, hard: 3, legendary: 3 };
+
 /** Prep time before each wave (ms). Wave 1 is quick; wave 10 gets breathing room. */
 function getPrepMsForWave(waveNum: number): number {
   if (waveNum === 1) return 20000;
@@ -57,6 +61,8 @@ function makeInitialState(): WaveState {
 
 export class WaveManager {
   private state: WaveState = makeInitialState();
+  private hpMultiplier = 1;
+  private speedMultiplier = 1;
 
   start(): void {
     this.state.waveNumber = 1;
@@ -134,5 +140,20 @@ export class WaveManager {
     if (this.state.phase === 'prep') {
       this.state.prepMsRemaining += ms;
     }
+  }
+
+  setDifficulty(difficulty: string): void {
+    this.hpMultiplier = DIFFICULTY_HP[difficulty] ?? 1;
+    this.speedMultiplier = DIFFICULTY_SPEED[difficulty] ?? 1;
+    this.state.lives = DIFFICULTY_LIVES[difficulty] ?? 5;
+  }
+
+  getHpMultiplier(): number { return this.hpMultiplier; }
+  getSpeedMultiplier(): number { return this.speedMultiplier; }
+
+  startAtWave(waveNum: number): void {
+    this.state.waveNumber = Math.max(1, Math.min(waveNum, TOTAL_WAVES));
+    this.state.phase = 'prep';
+    this.state.prepMsRemaining = getPrepMsForWave(this.state.waveNumber);
   }
 }

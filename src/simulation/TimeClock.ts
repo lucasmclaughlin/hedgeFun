@@ -39,6 +39,11 @@ export class TimeClock {
     this.speedIndex = (this.speedIndex + 1) % SPEED_STEPS.length;
   }
 
+  /** Set speed directly by index: 0=Paused, 1=Slow, 2=Normal, 3=Fast */
+  setSpeedIndex(index: number): void {
+    this.speedIndex = Math.max(0, Math.min(SPEED_STEPS.length - 1, index));
+  }
+
   getIsPaused(): boolean {
     return this.speedIndex === 0;
   }

@@ -57,6 +57,27 @@ const BATTLE_CRIES: Record<string, string[]> = {
 };
 const DEFAULT_BATTLE_CRIES = ['For hedge!', '*attack!*', 'Hold!'];
 
+/** Per-species banner colours: fabric bg, gold/silver trim, text colour */
+const BANNER_COLOURS: Record<string, { bg: string; trim: string; text: string }> = {
+  hedgehog:     { bg: '#6b1a1a', trim: '#d4a017', text: '#ffe8a0' }, // deep crimson + gold
+  fieldmouse:   { bg: '#2a4a2a', trim: '#c0a050', text: '#e8f0d0' }, // forest green + brass
+  badger:       { bg: '#1a1a2e', trim: '#c0c0d0', text: '#e0e0ff' }, // midnight blue + silver
+  wren:         { bg: '#4a3520', trim: '#d4a017', text: '#ffe8c0' }, // brown + gold
+  robin:        { bg: '#7a2010', trim: '#d4a017', text: '#ffe8a0' }, // red-orange + gold
+  owl:          { bg: '#2a1a3a', trim: '#b0a0d0', text: '#e0d8f0' }, // purple + silver
+  barnowl:      { bg: '#3a3028', trim: '#e0d0a0', text: '#fff8e0' }, // dark tan + pale gold
+  shrew:        { bg: '#3a2a18', trim: '#c0a050', text: '#f0e0b0' }, // earth brown + brass
+  toad:         { bg: '#1a3a20', trim: '#60c060', text: '#d0ffd0' }, // swamp green + green
+  woodpigeon:   { bg: '#2a3040', trim: '#a0b0c0', text: '#d0e0f0' }, // slate blue + silver
+  rabbit:       { bg: '#4a3a28', trim: '#d4a017', text: '#ffe8c0' }, // sandy brown + gold
+  fox:          { bg: '#5a2008', trim: '#d4a017', text: '#ffe0a0' }, // copper + gold
+  dormouse:     { bg: '#4a3828', trim: '#d0b060', text: '#f8f0d0' }, // warm brown + gold
+  redkite:      { bg: '#5a1818', trim: '#d4a017', text: '#ffe8a0' }, // blood red + gold
+  pipistrelle:  { bg: '#18182a', trim: '#8080b0', text: '#c0c0e0' }, // night black + silver
+  bluetit:      { bg: '#1a3a5a', trim: '#d4a017', text: '#e0f0ff' }, // blue + gold
+};
+const BANNER_COLOURS_DEFAULT = { bg: '#4a3020', trim: '#c0a050', text: '#f0e0c0' };
+
 
 export class GameScene extends Phaser.Scene {
   private asciiRenderer!: AsciiRenderer;
@@ -494,15 +515,16 @@ export class GameScene extends Phaser.Scene {
                 `-${e.damage}`, e.effect.col, e.effect.row, '#ff4040', 800,
               );
             }
-            // Occasional battle cry above the defender (20% chance for heavy, 8% light)
+            // Occasional battle cry banner above the defender (20% chance for heavy, 8% light)
             const cryChance = e.damage >= 2 ? 0.2 : 0.08;
             if (Math.random() < cryChance) {
               const cries = BATTLE_CRIES[nearCreature.defId] ?? DEFAULT_BATTLE_CRIES;
               const cry = cries[Math.floor(Math.random() * cries.length)];
-              // Trim to max 12 chars for floating text
               const short = cry.length > 14 ? cry.slice(0, 13) + '\u2026' : cry;
-              this.battleFx.addFloatingText(
-                short, nearCreature.col, nearCreature.row, '#e0d060', 1400,
+              const colours = BANNER_COLOURS[nearCreature.defId] ?? BANNER_COLOURS_DEFAULT;
+              this.battleFx.addBannerText(
+                short, nearCreature.col, nearCreature.row,
+                colours.text, colours.bg, colours.trim, 1800,
               );
             }
             // Battle log dispatch (15% chance)
@@ -1158,13 +1180,14 @@ export class GameScene extends Phaser.Scene {
 
     // Zoom in to ~30 cols — tight on the action
     const targetZoom = cam.width / (30 * cw);
-    cam.setZoom(cam.zoom + (targetZoom - cam.zoom) * 0.06);
+    cam.setZoom(cam.zoom + (targetZoom - cam.zoom) * 0.12);
 
-    // Centre on the tracked enemy
-    const targetX = target.col * cw - cam.width / (2 * cam.zoom);
-    const targetY = Math.max(0, target.row * ch - cam.height / (2 * cam.zoom));
-    cam.scrollX += (targetX - cam.scrollX) * 0.1;
-    cam.scrollY += (targetY - cam.scrollY) * 0.1;
+    // Centre on the tracked enemy — use TARGET zoom so scroll doesn't
+    // fight with the zoom transition and end up underground
+    const targetX = target.col * cw - cam.width / (2 * targetZoom);
+    const targetY = Math.max(0, target.row * ch - cam.height / (2 * targetZoom));
+    cam.scrollX += (targetX - cam.scrollX) * 0.15;
+    cam.scrollY += (targetY - cam.scrollY) * 0.15;
   }
 
   private renderSelectionHighlight(_delta: number): void {

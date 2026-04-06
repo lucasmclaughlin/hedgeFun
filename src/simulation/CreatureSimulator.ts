@@ -1,9 +1,10 @@
 import {
-  Season, CreatureBehavior, CreatureActivity, MovementPattern, WinterBehavior, GRID_CONFIG,
+  Season, Layer, CreatureBehavior, CreatureActivity, MovementPattern, WinterBehavior, GRID_CONFIG,
   type TimePeriod, type CreatureState, type CreatureDef, type PlantState,
 } from '@/types';
 import { CREATURE_LIST } from '@/data/creatures';
 import { HabitatScorer } from './HabitatScorer';
+import type { TerrainMap } from './TerrainMap';
 
 /** Simple seeded random from two ints */
 function hash(a: number, b: number): number {
@@ -20,6 +21,7 @@ function hash(a: number, b: number): number {
 export class CreatureSimulator {
   private creatures: CreatureState[] = [];
   private scorer: HabitatScorer;
+  private terrain: TerrainMap | null = null;
   private nextId = 1;
   /** Tracks which creature defs have been spawned (id → count) */
   private spawnCounts: Map<string, number> = new Map();
@@ -28,6 +30,10 @@ export class CreatureSimulator {
 
   constructor(scorer: HabitatScorer) {
     this.scorer = scorer;
+  }
+
+  setTerrainMap(terrain: TerrainMap): void {
+    this.terrain = terrain;
   }
 
   /** Called once per period — evaluate habitat and potentially spawn creatures */
@@ -141,8 +147,9 @@ export class CreatureSimulator {
     const homeCol = this.pickHomeColumn(def, plants);
     if (homeCol < 0) return;
 
-    // Pick a row within the creature's range
-    const row = def.rowRange[0] + Math.floor(Math.random() * (def.rowRange[1] - def.rowRange[0] + 1));
+    // Pick a row — ground/underground/shrub creatures follow terrain contours,
+    // sky/canopy creatures use their fixed rowRange
+    const row = this.getTerrainRow(def, homeCol);
 
     const idleActs = def.idleActivities;
     const creature: CreatureState = {
@@ -249,11 +256,15 @@ export class CreatureSimulator {
 
     creature.col = newCol;
 
-    // Vertical wobble for flying/underground creatures
+    // Update row to follow terrain contours
+    creature.row = this.getTerrainRow(def, newCol);
+
+    // Additional vertical wobble for flying creatures
     if (pattern === MovementPattern.Soar || pattern === MovementPattern.Flit) {
       if (Math.random() < 0.3) {
-        const newRow = creature.row + (Math.random() < 0.5 ? -1 : 1);
-        if (newRow >= def.rowRange[0] && newRow <= def.rowRange[1]) {
+        const wobble = Math.random() < 0.5 ? -1 : 1;
+        const newRow = creature.row + wobble;
+        if (newRow >= 0 && newRow < GRID_CONFIG.rows) {
           creature.row = newRow;
         }
       }
@@ -271,6 +282,28 @@ export class CreatureSimulator {
       creature.activity = def.idleActivities[Math.floor(Math.random() * def.idleActivities.length)];
       creature.frameIndex = 0;
     }
+  }
+
+  /**
+   * Compute a terrain-aware row for a creature at the given column.
+   * Ground-relative layers (Ground, Underground, LowerShrub, MidCanopy)
+   * shift with the terrain contour. Sky/UpperCanopy stay at fixed rows.
+   */
+  private getTerrainRow(def: CreatureDef, col: number): number {
+    const DEFAULT_GROUND = 20;
+    const groundRow = this.terrain?.getGroundRow(col) ?? DEFAULT_GROUND;
+    const offset = groundRow - DEFAULT_GROUND;
+
+    if (def.layer === Layer.Sky || def.layer === Layer.UpperCanopy) {
+      // Sky and upper canopy creatures stay at fixed rows — they fly above terrain
+      const mid = Math.floor((def.rowRange[0] + def.rowRange[1]) / 2);
+      return mid;
+    }
+
+    // Shift the creature's nominal row range by the terrain offset
+    const mid = Math.floor((def.rowRange[0] + def.rowRange[1]) / 2);
+    const shifted = mid + offset;
+    return Math.max(0, Math.min(GRID_CONFIG.rows - 1, shifted));
   }
 
   private getMoveInterval(def: CreatureDef): number {

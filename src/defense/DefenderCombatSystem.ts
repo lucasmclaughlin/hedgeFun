@@ -1,38 +1,463 @@
-// Stub — real implementation provided by hedgeKingdoms DefenderCombatSystem unit
-import type { EnemyInstance } from '@/defense/EnemySimulator';
-import type { CreatureState } from '@/types';
+import { CreatureState, CreatureActivity, GRID_CONFIG } from '@/types';
+import type { EnemyState } from '@/types';
 
-export interface DefenderInfo {
-  creatureId: string;
-  species: string;
-  attacksPerSecond: number;
+const AERIAL_ENEMY_IDS = new Set(['crow', 'raider_crow']);
+function isAerial(e: EnemyState): boolean { return AERIAL_ENEMY_IDS.has(e.defId); }
+
+// ── Local types ────────────────────────────────────────────────
+
+export enum DefenderRole {
+  Archer     = 0,
+  Infantry   = 1,
+  Heavy      = 2,
+  Scout      = 3,
+  NightRaider = 4,
+  Sapper     = 5,
+  Alchemist  = 6,
+  Militia    = 7,
+  Harrier    = 8,
 }
 
-export interface CombatEvent {
-  type: 'hit-enemy' | 'alarm';
-  enemyId: string;
-  damage: number;
-  effect: BattleEffect;
-  prepBonusMs: number;
+export interface DefenderState {
+  creatureId: number;
+  role: DefenderRole;
+  hp: number;
+  maxHp: number;
+  attackCooldownMs: number;
+  assignedCol: number | null;
+  assignedRow: number | null;
 }
 
 export interface BattleEffect {
+  id: number;
+  type: 'arrow' | 'clash' | 'shield' | 'poison';
   col: number;
   row: number;
-  char: string;
-  fg: string;
+  targetCol: number;
+  progress: number;
   durationMs: number;
+  elapsedMs: number;
 }
 
+export type { EnemyState } from '@/types';
+
+// ── Role constants ─────────────────────────────────────────────
+
+interface RoleConfig {
+  range: number;
+  damage: number;
+  cooldownMs: number;
+  maxHp: number;
+}
+
+const ROLE_CONFIG: Record<DefenderRole, RoleConfig> = {
+  [DefenderRole.Archer]:      { range: 4,  damage: 1,   cooldownMs: 2500, maxHp: 1 },
+  [DefenderRole.Infantry]:    { range: 1,  damage: 1,   cooldownMs: 1500, maxHp: 2 },
+  [DefenderRole.Heavy]:       { range: 1,  damage: 2,   cooldownMs: 3000, maxHp: 4 },
+  [DefenderRole.Scout]:       { range: 25, damage: 0,   cooldownMs: 0,    maxHp: 1 },
+  [DefenderRole.NightRaider]: { range: 3,  damage: 3,   cooldownMs: 4000, maxHp: 3 },
+  [DefenderRole.Sapper]:      { range: 0,  damage: 2,   cooldownMs: 8000, maxHp: 1 },
+  [DefenderRole.Alchemist]:   { range: 2,  damage: 1,   cooldownMs: 5000, maxHp: 2 },
+  [DefenderRole.Militia]:     { range: 2,  damage: 0.5, cooldownMs: 2000, maxHp: 1 },
+  [DefenderRole.Harrier]:     { range: 10, damage: 0.5, cooldownMs: 3000, maxHp: 1 },
+};
+
+const ROLE_BY_DEF_ID: Record<string, DefenderRole> = {
+  fieldmouse:   DefenderRole.Archer,
+  hedgehog:     DefenderRole.Infantry,
+  badger:       DefenderRole.Heavy,
+  wren:         DefenderRole.Scout,
+  robin:        DefenderRole.Scout,
+  owl:          DefenderRole.NightRaider,
+  barnowl:      DefenderRole.NightRaider,
+  shrew:        DefenderRole.Sapper,
+  toad:         DefenderRole.Alchemist,
+  woodpigeon:   DefenderRole.Harrier,
+  bluetit:      DefenderRole.Harrier,
+  goldfinch:    DefenderRole.Harrier,
+  yellowhammer: DefenderRole.Harrier,
+  blackbird:    DefenderRole.Harrier,
+  songthrush:   DefenderRole.Harrier,
+  pipistrelle:  DefenderRole.Harrier,
+  redkite:      DefenderRole.Harrier,
+};
+
+const GRID_CENTRE_COL = Math.floor(GRID_CONFIG.cols / 2);
+const SCOUT_ALARM_DIST = 25;
+const NIGHT_RAIDER_HOURS = new Set([0, 6, 7]); // Matins, Vespers, Compline
+
+// ── Event types ────────────────────────────────────────────────
+
+export type DefenseEvent =
+  | { type: 'hit-enemy';    enemyId: number;    damage: number; effect: BattleEffect }
+  | { type: 'hit-defender'; creatureId: number; damage: number }
+  | { type: 'alarm';        prepBonusMs: number }
+  | { type: 'rally';        col: number; row: number };
+
+// ── Main class ─────────────────────────────────────────────────
+
 export class DefenderCombatSystem {
+  private defenders = new Map<number, DefenderState>();
+  private effectIdCounter = 0;
+  private traps: Array<{ col: number; row: number; triggeredBy?: number }> = [];
+
+  /** Tracks which enemies have already triggered the Scout alarm */
+  private alertedEnemyIds = new Set<number>();
+  /** Tracks infantry defenders whose first hit of an engagement is blocked */
+  private infantryBlocked = new Set<number>();
+  /** Tracks slow expiry per enemy: enemyId → timestampMs when slow ends */
+  private slowedUntil = new Map<number, number>();
+  /** Accumulated time in ms (used for slow expiry comparison) */
+  private elapsedMs = 0;
+
+  /**
+   * Call once per period (when creatures list changes) to sync defender registry.
+   */
+  registerCreatures(creatures: readonly CreatureState[]): void {
+    const seen = new Set<number>();
+
+    for (const c of creatures) {
+      const role = ROLE_BY_DEF_ID[c.defId] ?? DefenderRole.Militia;
+
+      seen.add(c.id);
+
+      if (!this.defenders.has(c.id)) {
+        const cfg = ROLE_CONFIG[role];
+        this.defenders.set(c.id, {
+          creatureId:       c.id,
+          role,
+          hp:               cfg.maxHp,
+          maxHp:            cfg.maxHp,
+          attackCooldownMs: 0,
+          assignedCol:      null,
+          assignedRow:      null,
+        });
+      }
+    }
+
+    for (const id of this.defenders.keys()) {
+      if (!seen.has(id)) this.defenders.delete(id);
+    }
+  }
+
+  /**
+   * Call every frame. Returns combat events that occurred this tick.
+   * dayHourIndex: 0=Matins, 1=Lauds, 2=Prime, 3=Terce, 4=Sext, 5=None, 6=Vespers, 7=Compline
+   */
   update(
-    _enemies: EnemyInstance[],
-    _creatures: ReadonlyArray<CreatureState>,
-    _delta: number,
-    _dayHourIndex: number,
-  ): CombatEvent[] { return []; }
+    enemies: readonly EnemyState[],
+    creatures: readonly CreatureState[],
+    delta: number,
+    dayHourIndex: number,
+  ): DefenseEvent[] {
+    this.elapsedMs += delta;
+    const events: DefenseEvent[] = [];
 
-  registerCreatures(_creatures: ReadonlyArray<CreatureState>): void {}
+    // Prune expired slow entries
+    for (const [id, until] of this.slowedUntil) {
+      if (this.elapsedMs >= until) this.slowedUntil.delete(id);
+    }
 
-  getDefenders(): DefenderInfo[] { return []; }
+    const creatureById = new Map<number, CreatureState>();
+    for (const c of creatures) creatureById.set(c.id, c);
+
+    for (const def of this.defenders.values()) {
+      def.attackCooldownMs = Math.max(0, def.attackCooldownMs - delta);
+    }
+
+    for (const def of this.defenders.values()) {
+      if (def.hp <= 0) continue;
+      const creature = creatureById.get(def.creatureId);
+      if (!creature) continue;
+
+      switch (def.role) {
+        case DefenderRole.Archer:
+          this.tickArcher(def, creature, enemies, events);
+          break;
+        case DefenderRole.Infantry:
+          this.tickInfantry(def, creature, enemies, events);
+          break;
+        case DefenderRole.Heavy:
+          this.tickHeavy(def, creature, enemies, events);
+          break;
+        case DefenderRole.Scout:
+          this.tickScout(def, creature, enemies, events);
+          break;
+        case DefenderRole.NightRaider:
+          this.tickNightRaider(def, creature, enemies, events, dayHourIndex);
+          break;
+        case DefenderRole.Sapper:
+          this.tickSapper(def, creature);
+          break;
+        case DefenderRole.Alchemist:
+          this.tickAlchemist(def, creature, enemies, events);
+          break;
+        case DefenderRole.Militia:
+          this.tickMilitia(def, creature, enemies, events);
+          break;
+        case DefenderRole.Harrier:
+          this.tickHarrier(def, creature, enemies, events);
+          break;
+      }
+    }
+
+    this.checkTraps(enemies, events);
+
+    // Emit rally events at combat locations so nearby defenders converge
+    const rallyCols = new Set<number>();
+    for (const e of events) {
+      if (e.type === 'hit-enemy') rallyCols.add(e.effect.col);
+    }
+    for (const col of rallyCols) {
+      events.push({ type: 'rally', col, row: 20 });
+    }
+
+    return events;
+  }
+
+  getDefenders(): ReadonlyMap<number, DefenderState> {
+    return this.defenders;
+  }
+
+  /** Reset per-wave state; call at wave end. */
+  onWaveComplete(): void {
+    this.alertedEnemyIds.clear();
+    this.infantryBlocked.clear();
+  }
+
+  private makeEffect(
+    type: BattleEffect['type'],
+    col: number,
+    row: number,
+    targetCol: number,
+    durationMs: number,
+  ): BattleEffect {
+    return { id: ++this.effectIdCounter, type, col, row, targetCol, progress: 0, durationMs, elapsedMs: 0 };
+  }
+
+  private tickArcher(
+    def: DefenderState,
+    creature: CreatureState,
+    enemies: readonly EnemyState[],
+    events: DefenseEvent[],
+  ): void {
+    if (def.attackCooldownMs > 0) return;
+
+    const target = this.findEnemy(enemies, creature.col, creature.row, 4, 1, false);
+    if (!target) return;
+
+    const effect = this.makeEffect('arrow', creature.col, creature.row, target.col, 400);
+    events.push({ type: 'hit-enemy', enemyId: target.id, damage: 1, effect });
+    creature.activity = CreatureActivity.Hunting;
+    def.attackCooldownMs = ROLE_CONFIG[DefenderRole.Archer].cooldownMs;
+  }
+
+  private tickInfantry(
+    def: DefenderState,
+    creature: CreatureState,
+    enemies: readonly EnemyState[],
+    events: DefenseEvent[],
+  ): void {
+    if (def.attackCooldownMs > 0) return;
+
+    const target = this.findEnemy(enemies, creature.col, creature.row, 1, 1, false);
+    if (!target) return;
+
+    if (!this.infantryBlocked.has(def.creatureId)) {
+      this.infantryBlocked.add(def.creatureId);
+      const shieldEffect = this.makeEffect('shield', creature.col, creature.row, creature.col, 300);
+      events.push({ type: 'hit-enemy', enemyId: target.id, damage: 0, effect: shieldEffect });
+      def.attackCooldownMs = ROLE_CONFIG[DefenderRole.Infantry].cooldownMs;
+      return;
+    }
+
+    const effect = this.makeEffect('clash', target.col, target.row, target.col, 300);
+    events.push({ type: 'hit-enemy', enemyId: target.id, damage: 1, effect });
+    def.attackCooldownMs = ROLE_CONFIG[DefenderRole.Infantry].cooldownMs;
+  }
+
+  private tickHeavy(
+    def: DefenderState,
+    creature: CreatureState,
+    enemies: readonly EnemyState[],
+    events: DefenseEvent[],
+  ): void {
+    if (def.attackCooldownMs > 0) return;
+
+    const target = this.findEnemy(enemies, creature.col, creature.row, 1, 1, false);
+    if (!target) return;
+
+    const effect = this.makeEffect('clash', target.col, target.row, target.col, 300);
+    events.push({ type: 'hit-enemy', enemyId: target.id, damage: 2, effect });
+    def.attackCooldownMs = ROLE_CONFIG[DefenderRole.Heavy].cooldownMs;
+  }
+
+  private tickScout(
+    def: DefenderState,
+    creature: CreatureState,
+    enemies: readonly EnemyState[],
+    events: DefenseEvent[],
+  ): void {
+    // Spot distant enemies and rally militia toward them
+    for (const enemy of enemies) {
+      if (this.alertedEnemyIds.has(enemy.id)) continue;
+      if (Math.abs(enemy.col - GRID_CENTRE_COL) <= SCOUT_ALARM_DIST) {
+        this.alertedEnemyIds.add(enemy.id);
+        events.push({ type: 'alarm', prepBonusMs: 3000 });
+        events.push({ type: 'rally', col: enemy.col, row: enemy.row });
+      }
+    }
+
+    // Dive-bomb the nearest enemy for light harassment damage + slow
+    if (def.attackCooldownMs > 0) return;
+    const target = this.findEnemy(enemies, creature.col, creature.row, 8, 4, false)
+      ?? this.findEnemy(enemies, creature.col, creature.row, 8, 4, true);
+    if (!target) return;
+
+    const effect = this.makeEffect('clash', target.col, target.row, target.col, 250);
+    events.push({ type: 'hit-enemy', enemyId: target.id, damage: 0.3, effect });
+    target.currentSpeed *= 0.7;
+    this.slowedUntil.set(target.id, this.elapsedMs + 2000);
+    def.attackCooldownMs = 2500;
+  }
+
+  private tickNightRaider(
+    def: DefenderState,
+    creature: CreatureState,
+    enemies: readonly EnemyState[],
+    events: DefenseEvent[],
+    dayHourIndex: number,
+  ): void {
+    if (!NIGHT_RAIDER_HOURS.has(dayHourIndex)) return;
+    if (def.attackCooldownMs > 0) return;
+
+    const target = this.findEnemy(enemies, creature.col, creature.row, 3, 1, true);
+    if (!target) return;
+
+    const effect = this.makeEffect('clash', target.col, target.row, target.col, 300);
+    events.push({ type: 'hit-enemy', enemyId: target.id, damage: 3, effect });
+    def.attackCooldownMs = ROLE_CONFIG[DefenderRole.NightRaider].cooldownMs;
+  }
+
+  private tickSapper(def: DefenderState, creature: CreatureState): void {
+    if (def.attackCooldownMs > 0) return;
+
+    if (this.traps.length >= 3) this.traps.shift();
+    this.traps.push({ col: creature.col, row: creature.row });
+    def.attackCooldownMs = ROLE_CONFIG[DefenderRole.Sapper].cooldownMs;
+  }
+
+  private tickAlchemist(
+    def: DefenderState,
+    creature: CreatureState,
+    enemies: readonly EnemyState[],
+    events: DefenseEvent[],
+  ): void {
+    if (def.attackCooldownMs > 0) return;
+
+    const radius = 2;
+    const targets = enemies.filter(
+      e => Math.abs(e.col - creature.col) <= radius && Math.abs(e.row - creature.row) <= radius,
+    );
+    if (targets.length === 0) return;
+
+    const effect = this.makeEffect('poison', creature.col, creature.row, creature.col, 2000);
+
+    for (const target of targets) {
+      events.push({ type: 'hit-enemy', enemyId: target.id, damage: 1, effect });
+      target.currentSpeed *= 0.6;
+      this.slowedUntil.set(target.id, this.elapsedMs + 3000);
+    }
+
+    def.attackCooldownMs = ROLE_CONFIG[DefenderRole.Alchemist].cooldownMs;
+  }
+
+  private tickMilitia(
+    def: DefenderState,
+    creature: CreatureState,
+    enemies: readonly EnemyState[],
+    events: DefenseEvent[],
+  ): void {
+    if (def.attackCooldownMs > 0) return;
+
+    const target = this.findEnemy(enemies, creature.col, creature.row, 2, 2, false)
+      ?? this.findEnemy(enemies, creature.col, creature.row, 2, 2, true);
+    if (!target) return;
+
+    const effect = this.makeEffect('clash', target.col, target.row, target.col, 300);
+    events.push({ type: 'hit-enemy', enemyId: target.id, damage: 0.5, effect });
+    def.attackCooldownMs = ROLE_CONFIG[DefenderRole.Militia].cooldownMs;
+  }
+
+  private tickHarrier(
+    def: DefenderState,
+    creature: CreatureState,
+    enemies: readonly EnemyState[],
+    events: DefenseEvent[],
+  ): void {
+    if (def.attackCooldownMs > 0) return;
+
+    // Dive-bomb from long range — target ground or aerial enemies
+    const target = this.findEnemy(enemies, creature.col, creature.row, 10, 6, false)
+      ?? this.findEnemy(enemies, creature.col, creature.row, 10, 6, true);
+    if (!target) return;
+
+    // Arrow effect for the dive trajectory
+    const effect = this.makeEffect('arrow', creature.col, creature.row, target.col, 350);
+    events.push({ type: 'hit-enemy', enemyId: target.id, damage: 0.5, effect });
+
+    // Slow and confuse the enemy
+    target.currentSpeed *= 0.6;
+    this.slowedUntil.set(target.id, this.elapsedMs + 2500);
+
+    // Rally nearby militia to the spotted enemy
+    events.push({ type: 'rally', col: target.col, row: target.row });
+
+    def.attackCooldownMs = ROLE_CONFIG[DefenderRole.Harrier].cooldownMs;
+  }
+
+  private checkTraps(enemies: readonly EnemyState[], events: DefenseEvent[]): void {
+    for (let i = this.traps.length - 1; i >= 0; i--) {
+      const trap = this.traps[i];
+      const hit = enemies.find(
+        e => e.col === trap.col && e.row === trap.row && !isAerial(e),
+      );
+      if (!hit) continue;
+
+      const effect = this.makeEffect('clash', trap.col, trap.row, trap.col, 300);
+      events.push({ type: 'hit-enemy', enemyId: hit.id, damage: 2, effect });
+      hit.engagedDefenderId = -1; // -1 = stunned
+
+      this.traps.splice(i, 1);
+    }
+  }
+
+  private findEnemy(
+    enemies: readonly EnemyState[],
+    col: number,
+    row: number,
+    rangeCols: number,
+    rowTolerance: number,
+    aerialOnly: boolean,
+  ): EnemyState | null {
+    let best: EnemyState | null = null;
+    let bestDist = Infinity;
+
+    for (const e of enemies) {
+      if (e.hp <= 0) continue;
+      if (aerialOnly && !isAerial(e)) continue;
+      if (!aerialOnly && isAerial(e)) continue;
+
+      const colDist = Math.abs(e.col - col);
+      const rowDist = Math.abs(e.row - row);
+      if (colDist > rangeCols || rowDist > rowTolerance) continue;
+
+      if (colDist < bestDist) {
+        bestDist = colDist;
+        best = e;
+      }
+    }
+
+    return best;
+  }
 }

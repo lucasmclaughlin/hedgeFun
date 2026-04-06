@@ -19,18 +19,18 @@ import { TerrainMap } from '@/simulation/TerrainMap';
 import { getCompanionRelationships } from '@/simulation/companionPlanting';
 import { SPECIES_LIST } from '@/data/species';
 import { saveHighScore } from '@/scenes/SplashScene';
-import type { PlantState, CreatureState, SaveData } from '@/types';
+import { OverlayLayer, type PlantState, type CreatureState, type SaveData, type Glyph } from '@/types';
 import { WaveManager } from '@/defense/WaveManager';
 import { EnemySimulator } from '@/defense/EnemySimulator';
 import { EnemyRenderer } from '@/defense/EnemyRenderer';
-import { DefenderCombatSystem } from '@/defense/DefenderCombatSystem';
+import { DefenderCombatSystem, DefenderRole } from '@/defense/DefenderCombatSystem';
 import { BattleEffectRenderer } from '@/defense/BattleEffectRenderer';
-import { FortificationManager } from '@/defense/FortificationManager';
-import { seedKingdomsHedge } from '@/defense/KingdomsStarter';
+import { FortificationSystem } from '@/defense/FortificationSystem';
+import { SPECIES_BONUSES, applyThornDamage, applyHealingBerries } from '@/defense/SpeciesBonuses';
 import { KingdomsHudRenderer } from '@/ui/KingdomsHudRenderer';
 import { FortificationUI } from '@/ui/FortificationUI';
 import { ENEMIES } from '@/data/enemies';
-import type { EnemyDef } from '@/defense/EnemySimulator';
+import type { EnemyDef } from '@/types';
 
 /** Auto-save every 12 periods (1 full year) */
 const AUTO_SAVE_INTERVAL = 12;
@@ -103,11 +103,17 @@ export class GameScene extends Phaser.Scene {
   private defenderCombat!: DefenderCombatSystem;
   private battleFx!: BattleEffectRenderer;
   private kingdomsHud!: KingdomsHudRenderer;
-  private fortManager!: FortificationManager;
+  private fortSystem!: FortificationSystem;
   private fortUI!: FortificationUI;
   private currentFortType: 'wall' | 'watchtower' | 'gate' = 'wall';
   private ENEMY_MAP: Record<string, EnemyDef> = {};
   private autoStartKingdoms = false;
+  private defenderOverlayCells: Array<[number, number]> = [];
+  private selectedCreatureId: number | null = null;
+  private defenderAssignments = new Map<number, number>();  // creatureId → plantCol
+  private selectionHighlightCells: Array<[number, number]> = [];
+  private thornCooldowns = new Map<number, number>();
+  private healCooldowns = new Map<number, number>();
 
   constructor() {
     super({ key: 'GameScene' });
@@ -210,12 +216,46 @@ export class GameScene extends Phaser.Scene {
         }
 
         const worldX = pointer.worldX;
+        const worldY = pointer.worldY;
         const col = Math.floor(worldX / GRID_CONFIG.cellWidth);
+        const row = Math.floor(worldY / GRID_CONFIG.cellHeight);
+
+        if (this.kingdomsActive && col >= 0 && col < GRID_CONFIG.cols) {
+          if (pointer.rightButtonReleased()) {
+            // Right-click: assign selected creature to defend this plant
+            if (this.selectedCreatureId !== null) {
+              const plant = this.growthSim.getPlantAtCell(col, row) ?? this.growthSim.getPlants().find(p => p.col === col);
+              if (plant) {
+                this.defenderAssignments.set(this.selectedCreatureId, plant.col);
+                // Move creature's homeCol to the plant
+                const creature = this.creatureSim.getCreatures().find(c => c.id === this.selectedCreatureId);
+                if (creature) {
+                  (creature as { homeCol: number }).homeCol = plant.col;
+                }
+                this.hudRenderer.showMessage(`Defender assigned to ${plant.speciesId}`);
+                this.selectedCreatureId = null;
+              }
+            }
+            return;
+          }
+          // Left-click: select a creature
+          const clickedCreature = this.creatureSim.getCreatureAtCell(col, row);
+          if (clickedCreature) {
+            this.selectedCreatureId = clickedCreature.id;
+            this.hudRenderer.showMessage(`Selected ${clickedCreature.defId} — right-click a plant to assign`);
+            return;
+          }
+          this.selectedCreatureId = null;
+        }
+
         if (col >= 0 && col < GRID_CONFIG.cols) {
           this.asciiRenderer.setCursor(col, this.terrainMap.getGroundRow(col));
         }
       }
     });
+
+    // Disable context menu so right-click works for kingdoms assignment
+    this.game.canvas.addEventListener('contextmenu', (e: Event) => e.preventDefault());
 
     // Initialize terrain (before everything else — other systems read from it)
     this.terrainSeed = (Date.now() ^ Math.floor(Math.random() * 0x100000000)) | 0;
@@ -293,7 +333,7 @@ export class GameScene extends Phaser.Scene {
     this.enemyRenderer = new EnemyRenderer(this.asciiRenderer);
     this.defenderCombat = new DefenderCombatSystem();
     this.battleFx = new BattleEffectRenderer(this.asciiRenderer);
-    this.fortManager = new FortificationManager();
+    this.fortSystem = new FortificationSystem();
     this.kingdomsHud = new KingdomsHudRenderer(this);
     this.fortUI = new FortificationUI(this.asciiRenderer);
     this.ENEMY_MAP = Object.fromEntries(Object.values(ENEMIES).map(e => [e.id, e]));
@@ -361,6 +401,11 @@ export class GameScene extends Phaser.Scene {
         this.hudRenderer.showMilestoneToasts(newMilestones);
       }
 
+      // Re-register creatures as defenders when new ones spawn
+      if (this.kingdomsActive) {
+        this.defenderCombat.registerCreatures(this.creatureSim.getCreatures());
+      }
+
       // Auto-save every year (not in realtime mode — period resets would trigger constantly)
       if (!this.realtimeMode) {
         const totalPeriods = this.timeClock.getTotalPeriods();
@@ -418,20 +463,49 @@ export class GameScene extends Phaser.Scene {
       }
       if (waveEvent === 'game-over') {
         this.exitKingdomsMode();
-        return; // skip rest of frame
+        return;
       }
       if (waveEvent === 'campaign-complete') {
         this.onCampaignVictory();
-        return; // skip rest of frame
+        return;
+      }
+
+      // Rally: nearby defenders converge on combat
+      for (const e of defEvents) {
+        if (e.type === 'rally') {
+          for (const creature of this.creatureSim.getCreatures()) {
+            const defender = this.defenderCombat.getDefenders().get(creature.id);
+            if (!defender) continue;
+            if (Math.abs(creature.col - e.col) <= 15 && Math.abs(creature.col - e.col) > 2) {
+              (creature as { homeCol: number }).homeCol = e.col;
+            }
+          }
+        }
+      }
+
+      // Auto-fortification: castle walls around mature plants with assigned defenders
+      this.fortSystem.update(this.growthSim.getPlants(), this.defenderAssignments, this.terrainMap);
+      const forts = this.fortSystem.getForts();
+
+      // Species bonuses: thorn damage + healing
+      const thornHits = applyThornDamage(forts, enemies, delta, this.thornCooldowns);
+      for (const eid of thornHits) this.enemySim.applyDamage(eid, 1);
+      const healed = applyHealingBerries(forts, this.defenderCombat.getDefenders(), this.creatureSim.getCreatures(), delta, this.healCooldowns);
+      for (const cid of healed) {
+        const def = this.defenderCombat.getDefenders().get(cid);
+        if (def) (def as { hp: number }).hp = Math.min(def.hp + 0.5, def.maxHp);
       }
 
       const nearCentre = enemies.some(e => e.col >= 80 && e.col <= 120);
       this.kingdomsHud.showBattleAlert(nearCentre);
 
+      // Render
       this.battleFx.update(delta);
       this.battleFx.render();
       this.enemyRenderer.render(enemies, this.ENEMY_MAP);
-      this.fortUI.render(this.fortManager.getFortifications());
+      this.fortUI.render(forts, SPECIES_BONUSES);
+      this.renderDefenderOverlays();
+      this.renderSelectionHighlight(delta);
       this.kingdomsHud.update(waveState, this.defenderCombat.getDefenders(), delta);
     }
 
@@ -874,16 +948,11 @@ export class GameScene extends Phaser.Scene {
   // ── hedgeKingdoms mode ──
 
   private enterKingdomsMode(): void {
-    if (this.growthSim.getPlants().length === 0) {
-      seedKingdomsHedge(this.growthSim, this.creatureSim, this.terrainMap, this.timeClock);
-      const period = this.timeClock.getCurrentPeriod();
-      this.plantRenderer.renderPlants(this.growthSim.getPlants(), period.season);
-      this.defenderCombat.registerCreatures(this.creatureSim.getCreatures());
-    }
     this.kingdomsActive = true;
+    this.defenderCombat.registerCreatures(this.creatureSim.getCreatures());
     this.waveManager.start();
     this.kingdomsHud.setVisible(true);
-    this.hudRenderer.showMessage('The hedge is under attack! Defend it!');
+    this.hudRenderer.showMessage('The hedge is under attack! Click a creature, then right-click a plant to assign defenders.');
   }
 
   private exitKingdomsMode(): void {
@@ -910,6 +979,63 @@ export class GameScene extends Phaser.Scene {
     this.enemySim.clear();
     this.enemyRenderer.clear();
     this.battleFx.clear();
+  }
+
+  private static readonly ROLE_GLYPHS: Record<number, Glyph> = {
+    [DefenderRole.Archer]:      { char: '}', fg: '#e8d050', bg: '#282818' },
+    [DefenderRole.Infantry]:    { char: '\u2020', fg: '#c0c0c0', bg: '#181828' },
+    [DefenderRole.Heavy]:       { char: '\u2021', fg: '#d4a843', bg: '#282018' },
+    [DefenderRole.Scout]:       { char: '!', fg: '#40d0d0', bg: '#102828' },
+    [DefenderRole.NightRaider]: { char: '*', fg: '#a060d0', bg: '#201028' },
+    [DefenderRole.Sapper]:      { char: '^', fg: '#a08050', bg: '#282010' },
+    [DefenderRole.Alchemist]:   { char: '~', fg: '#40c060', bg: '#102818' },
+    [DefenderRole.Militia]:     { char: '\u2022', fg: '#a0a0a0', bg: '#181818' },
+    [DefenderRole.Harrier]:     { char: 'v', fg: '#70a0d0', bg: '#101828' },
+  };
+
+  private renderSelectionHighlight(_delta: number): void {
+    const SEL_LAYER = 21 as OverlayLayer;
+    for (const [c, r] of this.selectionHighlightCells) {
+      this.asciiRenderer.clearOverlay(c, r, SEL_LAYER);
+    }
+    this.selectionHighlightCells = [];
+
+    if (this.selectedCreatureId === null) return;
+    const creature = this.creatureSim.getCreatures().find(c => c.id === this.selectedCreatureId);
+    if (!creature) { this.selectedCreatureId = null; return; }
+
+    const blink = Math.floor(Date.now() / 400) % 2 === 0;
+    if (blink) {
+      const selGlyph: Glyph = { char: '\u25a1', fg: '#ffff60' };  // □ yellow square
+      this.asciiRenderer.setOverlay(creature.col - 1, creature.row, selGlyph, SEL_LAYER);
+      this.asciiRenderer.setOverlay(creature.col + 1, creature.row, selGlyph, SEL_LAYER);
+      this.selectionHighlightCells.push([creature.col - 1, creature.row], [creature.col + 1, creature.row]);
+    }
+  }
+
+  private renderDefenderOverlays(): void {
+    const DEFENDER_ICON_LAYER = 21 as OverlayLayer;
+
+    for (const [c, r] of this.defenderOverlayCells) {
+      this.asciiRenderer.clearOverlay(c, r, DEFENDER_ICON_LAYER);
+    }
+    this.defenderOverlayCells = [];
+
+    const defenders = this.defenderCombat.getDefenders();
+    const creatures = this.creatureSim.getCreatures();
+
+    for (const [creatureId, def] of defenders) {
+      const creature = creatures.find(c => c.id === creatureId);
+      if (!creature) continue;
+      const glyph = GameScene.ROLE_GLYPHS[def.role];
+      if (!glyph) continue;
+
+      const iconRow = creature.row - 1;
+      if (iconRow >= 0) {
+        this.asciiRenderer.setOverlay(creature.col, iconRow, glyph, DEFENDER_ICON_LAYER);
+        this.defenderOverlayCells.push([creature.col, iconRow]);
+      }
+    }
   }
 
   private cycleFortType(): void {

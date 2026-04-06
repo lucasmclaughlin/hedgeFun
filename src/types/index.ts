@@ -11,6 +11,7 @@ export enum OverlayLayer {
   Stars = 5,
   Plant = 10,
   Building = 15,
+  Fortification = 17,
   Creature = 20,
   Battle = 25,
   Weather = 30,
@@ -591,7 +592,7 @@ export interface EnemyState {
 
 export interface WaveState {
   waveNumber: number;
-  phase: 'off' | 'prep' | 'active';
+  phase: 'off' | 'prep' | 'wave' | 'complete' | 'game-over';
   prepMsRemaining: number;
   lives: number;
   enemiesRemainingInWave: number;

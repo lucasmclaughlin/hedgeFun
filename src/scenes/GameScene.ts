@@ -732,7 +732,11 @@ export class GameScene extends Phaser.Scene {
 
       // Toggle menu overlay
       case 'Escape':
-        if (this.screenshotMode) {
+        if (this.battleCameraMode) {
+          this.disableBattleCamera();
+          this.applyViewMode();
+          this.hudRenderer.showMessage('Battle Camera OFF');
+        } else if (this.screenshotMode) {
           this.exitScreenshotMode();
         } else {
           this.hudRenderer.toggleMenuOverlay();
@@ -784,13 +788,6 @@ export class GameScene extends Phaser.Scene {
           }
         }
         break;
-      case 'Escape':
-        if (this.battleCameraMode) {
-          this.disableBattleCamera();
-          this.applyViewMode();
-          this.hudRenderer.showMessage('Battle Camera OFF');
-          break;
-        }
     }
   }
 

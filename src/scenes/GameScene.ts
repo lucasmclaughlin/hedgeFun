@@ -25,7 +25,8 @@ import { EnemySimulator } from '@/defense/EnemySimulator';
 import { EnemyRenderer } from '@/defense/EnemyRenderer';
 import { DefenderCombatSystem } from '@/defense/DefenderCombatSystem';
 import { BattleEffectRenderer } from '@/defense/BattleEffectRenderer';
-import { FortificationManager } from '@/defense/FortificationManager';
+import { FortificationSystem } from '@/defense/FortificationSystem';
+import { SPECIES_BONUSES } from '@/defense/SpeciesBonuses';
 import { KingdomsHudRenderer } from '@/ui/KingdomsHudRenderer';
 import { FortificationUI } from '@/ui/FortificationUI';
 import { seedKingdomsHedge } from '@/defense/KingdomsStarter';
@@ -103,9 +104,9 @@ export class GameScene extends Phaser.Scene {
   private defenderCombat!: DefenderCombatSystem;
   private battleFx!: BattleEffectRenderer;
   private kingdomsHud!: KingdomsHudRenderer;
-  private fortManager!: FortificationManager;
+  private fortSystem!: FortificationSystem;
   private fortUI!: FortificationUI;
-  private currentFortType: 'wall' | 'watchtower' | 'gate' = 'wall';
+
   private ENEMY_MAP: Record<string, EnemyDef> = {};
   private autoStartKingdoms = false;
 
@@ -293,7 +294,7 @@ export class GameScene extends Phaser.Scene {
     this.enemyRenderer = new EnemyRenderer(this.asciiRenderer);
     this.defenderCombat = new DefenderCombatSystem();
     this.battleFx = new BattleEffectRenderer(this.asciiRenderer);
-    this.fortManager = new FortificationManager();
+    this.fortSystem = new FortificationSystem();
     this.kingdomsHud = new KingdomsHudRenderer(this);
     this.fortUI = new FortificationUI(this.asciiRenderer);
     this.ENEMY_MAP = Object.fromEntries(Object.values(ENEMIES).map(e => [e.id, e]));
@@ -427,7 +428,7 @@ export class GameScene extends Phaser.Scene {
       this.battleFx.update(delta);
       this.battleFx.render();
       this.enemyRenderer.render(enemies, this.ENEMY_MAP);
-      this.fortUI.render(this.fortManager.getFortifications());
+      this.fortUI.render(this.fortSystem.getForts(), SPECIES_BONUSES);
       this.kingdomsHud.update(waveState, this.defenderCombat.getDefenders(), delta);
     }
 
@@ -596,12 +597,6 @@ export class GameScene extends Phaser.Scene {
         }
         break;
 
-      // hedgeKingdoms — cycle fortification type
-      case 'f': case 'F':
-        if (this.kingdomsActive) {
-          this.cycleFortType();
-        }
-        break;
     }
   }
 
@@ -885,13 +880,6 @@ export class GameScene extends Phaser.Scene {
     this.battleFx.clear();
     this.kingdomsActive = false;
     // Keep kingdomsHud visible to show game-over screen; hide after delay or on keypress
-  }
-
-  private cycleFortType(): void {
-    const types: Array<'wall' | 'watchtower' | 'gate'> = ['wall', 'watchtower', 'gate'];
-    const idx = types.indexOf(this.currentFortType);
-    this.currentFortType = types[(idx + 1) % types.length];
-    this.hudRenderer.showMessage(`Fortification: ${this.currentFortType}`);
   }
 
   // ── Screenshot mode ──

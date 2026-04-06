@@ -344,7 +344,7 @@ export class SplashScene extends Phaser.Scene {
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
     kingdomsText.on('pointerover', () => kingdomsText.setColor('#e8b47a'));
     kingdomsText.on('pointerout', () => kingdomsText.setColor('#c8884a'));
-    kingdomsText.on('pointerdown', () => this.startKingdomsMode());
+    kingdomsText.on('pointerdown', () => this.scene.start('KingdomsSplashScene'));
 
     // Keyboard shortcuts hint
     const shortcutPrefix = hasSave ? 'C = continue  ·  I = import save' : 'I = import save';
@@ -375,7 +375,7 @@ export class SplashScene extends Phaser.Scene {
           return;
         }
         if (event.key === 'k' || event.key === 'K') {
-          this.startKingdomsMode();
+          this.scene.start('KingdomsSplashScene');
           return;
         }
       }
@@ -456,10 +456,4 @@ export class SplashScene extends Phaser.Scene {
     this.scene.start('GameScene', { playerName: save.playerName || 'Player', loadSave: save });
   }
 
-  private startKingdomsMode(): void {
-    this.scene.start('GameScene', {
-      playerName: this.playerName || 'Defender',
-      kingdomsMode: true,
-    });
-  }
 }

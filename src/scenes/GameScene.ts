@@ -19,7 +19,7 @@ import { TerrainMap } from '@/simulation/TerrainMap';
 import { getCompanionRelationships } from '@/simulation/companionPlanting';
 import { SPECIES_LIST } from '@/data/species';
 import { saveHighScore } from '@/scenes/SplashScene';
-import { OverlayLayer, type PlantState, type CreatureState, type SaveData, type Glyph } from '@/types';
+import { OverlayLayer, type PlantState, type CreatureState, type SaveData, type Glyph, type EnemyState, type EnemyDef } from '@/types';
 import { WaveManager } from '@/defense/WaveManager';
 import { EnemySimulator } from '@/defense/EnemySimulator';
 import { EnemyRenderer } from '@/defense/EnemyRenderer';
@@ -30,10 +30,31 @@ import { SPECIES_BONUSES, applyThornDamage, applyHealingBerries } from '@/defens
 import { KingdomsHudRenderer } from '@/ui/KingdomsHudRenderer';
 import { FortificationUI } from '@/ui/FortificationUI';
 import { ENEMIES } from '@/data/enemies';
-import type { EnemyDef } from '@/types';
+
 
 /** Auto-save every 12 periods (1 full year) */
 const AUTO_SAVE_INTERVAL = 12;
+
+/** Short battle cries for floating text above creatures */
+const BATTLE_CRIES: Record<string, string[]> = {
+  hedgehog: ['Spines out!', 'Hold!', 'For the hedge!'],
+  fieldmouse: ['*SQUEEK!*', 'For home!', '*chitter!*'],
+  badger: ['*SNARL!*', 'COME ON!', 'By claw!'],
+  wren: ['*TRILL!*', 'Chit-chit!', 'Spotted!'],
+  robin: ['*TICK!*', 'Ours!', 'Alert!'],
+  owl: ['*SCREECH!*', 'WHO dares!', '*silent strike*'],
+  barnowl: ['*SHRIEK!*', 'None pass!', '*ghost swoop*'],
+  shrew: ['*SQUEAK!*', 'Dig dig!', '*fury!*'],
+  toad: ['*CROAK!*', 'Taste that!', '*toxic spit*'],
+  woodpigeon: ['*CLAP!*', 'Coo-COO!', '*wing bash*'],
+  rabbit: ['*THUMP!*', 'For burrow!', '*kick!*'],
+  fox: ['*GROWL!*', 'Remember!', '*snap!*'],
+  dormouse: ['*squeak!*', 'Woke me?!', '*nip!*'],
+  redkite: ['*KEEN!*', 'Sky sees!', '*stoop!*'],
+  pipistrelle: ['*eeeee!*', 'Night wing!', '*swoop!*'],
+  bluetit: ['*PEE-POW!*', '*peck!*', '*flutter!*'],
+};
+const DEFAULT_BATTLE_CRIES = ['For hedge!', '*attack!*', 'Hold!'];
 
 
 export class GameScene extends Phaser.Scene {
@@ -112,6 +133,9 @@ export class GameScene extends Phaser.Scene {
   private selectedCreatureId: number | null = null;
   private defenderAssignments = new Map<number, number>();  // creatureId → plantCol
   private selectionHighlightCells: Array<[number, number]> = [];
+  private battleCameraMode = false;
+  private battleCameraIndex = -1;
+  private hoveredEnemy: EnemyState | null = null;
   private thornCooldowns = new Map<number, number>();
   private healCooldowns = new Map<number, number>();
 
@@ -160,6 +184,16 @@ export class GameScene extends Phaser.Scene {
       const col = Math.floor(pointer.worldX / GRID_CONFIG.cellWidth);
       const row = Math.floor(pointer.worldY / GRID_CONFIG.cellHeight);
       if (col >= 0 && col < GRID_CONFIG.cols && row >= 0 && row < GRID_CONFIG.rows) {
+        // Check enemy hover first in kingdoms mode
+        if (this.kingdomsActive) {
+          const enemies = this.enemySim.getEnemies();
+          this.hoveredEnemy = enemies.find(e => e.col === col && Math.abs(e.row - row) <= 1) ?? null;
+          if (this.hoveredEnemy) {
+            this.kingdomsHud.showEnemyTooltip(this.hoveredEnemy, this.ENEMY_MAP[this.hoveredEnemy.defId], pointer.x, pointer.y);
+          } else {
+            this.kingdomsHud.hideEnemyTooltip();
+          }
+        }
         this.hoveredCreature = this.creatureSim.getCreatureAtCell(col, row);
         this.hoveredPlant = this.hoveredCreature ? null : this.growthSim.getPlantAtCell(col, row);
 
@@ -439,15 +473,60 @@ export class GameScene extends Phaser.Scene {
         if (e.type === 'hit-enemy') {
           this.enemySim.applyDamage(e.enemyId, e.damage);
           this.battleFx.addEffect(e.effect);
+
+          // Floating text above the attacker
+          const nearCreature = this.creatureSim.getCreatures().find(
+            c => Math.abs(c.col - e.effect.col) <= 3 && this.defenderCombat.getDefenders().has(c.id),
+          );
+          if (nearCreature) {
+            // Show damage number at the enemy
+            const enemy = enemies.find(en => en.id === e.enemyId);
+            if (e.damage >= 1) {
+              this.battleFx.addFloatingText(
+                `-${e.damage}`, e.effect.col, e.effect.row, '#ff4040', 800,
+              );
+            }
+            // Occasional battle cry above the defender (20% chance for heavy, 8% light)
+            const cryChance = e.damage >= 2 ? 0.2 : 0.08;
+            if (Math.random() < cryChance) {
+              const cries = BATTLE_CRIES[nearCreature.defId] ?? DEFAULT_BATTLE_CRIES;
+              const cry = cries[Math.floor(Math.random() * cries.length)];
+              // Trim to max 12 chars for floating text
+              const short = cry.length > 14 ? cry.slice(0, 13) + '\u2026' : cry;
+              this.battleFx.addFloatingText(
+                short, nearCreature.col, nearCreature.row, '#e0d060', 1400,
+              );
+            }
+            // Battle log dispatch (15% chance)
+            if (enemy && Math.random() < 0.15) {
+              this.kingdomsHud.logHit(nearCreature.defId, enemy.defId, e.damage);
+            }
+          }
         }
         if (e.type === 'alarm') {
           this.waveManager.addPrepTime(e.prepBonusMs);
+          // Log scout sighting — find the scout and the nearest enemy
+          const scouts = this.creatureSim.getCreatures().filter(
+            c => (c.defId === 'wren' || c.defId === 'robin') && this.defenderCombat.getDefenders().has(c.id),
+          );
+          const nearestEnemy = enemies[0];
+          if (scouts.length > 0 && nearestEnemy) {
+            this.kingdomsHud.logSighting(scouts[0].defId, nearestEnemy.defId, nearestEnemy.col);
+          }
         }
       }
 
       for (const e of simEvents) {
-        if (e.type === 'defeated') this.waveManager.enemyDefeated();
-        if (e.type === 'breached') this.waveManager.enemyBreached(e.damage);
+        if (e.type === 'defeated') {
+          this.waveManager.enemyDefeated();
+          const enemy = enemies.find(en => en.id === e.id);
+          if (enemy) this.kingdomsHud.logDefeat(enemy.defId);
+        }
+        if (e.type === 'breached') {
+          this.waveManager.enemyBreached(e.damage);
+          const enemy = enemies.find(en => en.id === e.id);
+          if (enemy) this.kingdomsHud.logBreach(enemy.defId);
+        }
       }
 
       const waveEvent = this.waveManager.update(delta);
@@ -507,6 +586,11 @@ export class GameScene extends Phaser.Scene {
       this.renderDefenderOverlays();
       this.renderSelectionHighlight(delta);
       this.kingdomsHud.update(waveState, this.defenderCombat.getDefenders(), delta);
+
+      // Battle camera — zoom + pan to follow the frontline
+      if (this.battleCameraMode && enemies.length > 0) {
+        this.updateBattleCamera(enemies);
+      }
     }
 
     // Update companion relationships for hovered plant
@@ -674,12 +758,32 @@ export class GameScene extends Phaser.Scene {
         }
         break;
 
-      // hedgeKingdoms — cycle fortification type
-      case 'f': case 'F':
+      // hedgeKingdoms — battle camera: cycle through enemies, press again to advance
+      case 'b': case 'B':
         if (this.kingdomsActive) {
-          this.cycleFortType();
+          const enemies = this.enemySim.getEnemies();
+          if (!this.battleCameraMode) {
+            this.battleCameraMode = true;
+            this.battleCameraIndex = 0;
+            this.hudRenderer.showMessage('Battle Camera — press B to cycle enemies, Esc to exit');
+          } else {
+            this.battleCameraIndex = (this.battleCameraIndex + 1) % Math.max(1, enemies.length);
+            if (enemies.length > 0) {
+              const e = enemies[this.battleCameraIndex % enemies.length];
+              const def = this.ENEMY_MAP[e.defId];
+              this.hudRenderer.showMessage(`Tracking: ${def?.name ?? e.defId} (${Math.ceil(e.hp)} HP)`);
+            }
+          }
         }
         break;
+      case 'Escape':
+        if (this.battleCameraMode) {
+          this.battleCameraMode = false;
+          this.battleCameraIndex = -1;
+          this.applyViewMode();
+          this.hudRenderer.showMessage('Battle Camera OFF');
+          break;
+        }
     }
   }
 
@@ -992,6 +1096,28 @@ export class GameScene extends Phaser.Scene {
     [DefenderRole.Militia]:     { char: '\u2022', fg: '#a0a0a0', bg: '#181818' },
     [DefenderRole.Harrier]:     { char: 'v', fg: '#70a0d0', bg: '#101828' },
   };
+
+  private updateBattleCamera(enemies: readonly EnemyState[]): void {
+    if (enemies.length === 0) return;
+
+    // Clamp index to valid range
+    const idx = this.battleCameraIndex % enemies.length;
+    const target = enemies[idx];
+
+    const cam = this.cameras.main;
+    const cw = GRID_CONFIG.cellWidth;
+    const ch = GRID_CONFIG.cellHeight;
+
+    // Zoom in to ~30 cols — tight on the action
+    const targetZoom = cam.width / (30 * cw);
+    cam.setZoom(cam.zoom + (targetZoom - cam.zoom) * 0.06);
+
+    // Centre on the tracked enemy
+    const targetX = target.col * cw - cam.width / (2 * cam.zoom);
+    const targetY = Math.max(0, target.row * ch - cam.height / (2 * cam.zoom));
+    cam.scrollX += (targetX - cam.scrollX) * 0.1;
+    cam.scrollY += (targetY - cam.scrollY) * 0.1;
+  }
 
   private renderSelectionHighlight(_delta: number): void {
     const SEL_LAYER = 21 as OverlayLayer;

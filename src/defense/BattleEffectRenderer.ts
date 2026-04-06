@@ -14,18 +14,32 @@ export interface BattleEffect {
   elapsedMs: number;
 }
 
+export interface FloatingText {
+  text: string;
+  col: number;
+  row: number;
+  color: string;
+  elapsedMs: number;
+  durationMs: number;
+}
+
 function inBounds(c: number, r: number): boolean {
   return c >= 0 && c < GRID_CONFIG.cols && r >= 0 && r < GRID_CONFIG.rows;
 }
 
 export class BattleEffectRenderer {
   private effects: BattleEffect[] = [];
+  private floats: FloatingText[] = [];
   private prevCells: Array<[number, number]> = [];
 
   constructor(private ascii: AsciiRenderer) {}
 
   addEffect(effect: BattleEffect): void {
     this.effects.push({ ...effect });
+  }
+
+  addFloatingText(text: string, col: number, row: number, color: string, durationMs = 1200): void {
+    this.floats.push({ text, col, row, color, elapsedMs: 0, durationMs });
   }
 
   /** Advance all effects; remove expired ones. Call every frame with delta ms. */
@@ -35,6 +49,9 @@ export class BattleEffectRenderer {
       fx.progress = Math.min(fx.elapsedMs / fx.durationMs, 1);
     }
     this.effects = this.effects.filter(fx => fx.elapsedMs < fx.durationMs);
+
+    for (const ft of this.floats) ft.elapsedMs += delta;
+    this.floats = this.floats.filter(ft => ft.elapsedMs < ft.durationMs);
   }
 
   /** Draw all active effects. Call after update(). */
@@ -52,6 +69,14 @@ export class BattleEffectRenderer {
         case 'poison':  this.renderPoison(fx);  break;
       }
     }
+
+    for (const ft of this.floats) {
+      const drift = Math.floor(ft.elapsedMs / 400); // rise 1 row per 400ms
+      const row = ft.row - 2 - drift;
+      for (let i = 0; i < ft.text.length; i++) {
+        this.set(ft.col + i, row, { char: ft.text[i], fg: ft.color });
+      }
+    }
   }
 
   clear(): void {
@@ -60,6 +85,7 @@ export class BattleEffectRenderer {
     }
     this.prevCells = [];
     this.effects = [];
+    this.floats = [];
   }
 
   private set(c: number, r: number, glyph: Glyph): void {

@@ -158,7 +158,7 @@ export class GameScene extends Phaser.Scene {
   private selectionHighlightCells: Array<[number, number]> = [];
   private battleCameraMode = false;
   private battleCameraIndex = -1;
-  private kingdomsNeedsPlantRender = false;
+  private kingdomsGrowthBoost = 0;
   private hoveredEnemy: EnemyState | null = null;
   private thornCooldowns = new Map<number, number>();
   private healCooldowns = new Map<number, number>();
@@ -288,7 +288,7 @@ export class GameScene extends Phaser.Scene {
           if (pointer.rightButtonReleased()) {
             // Right-click: assign selected creature to defend this plant
             if (this.selectedCreatureId !== null) {
-              const plant = this.growthSim.getPlantAtCell(col, row) ?? this.growthSim.getPlants().find(p => p.col === col);
+              const plant = this.growthSim.getPlantAtCell(col, row);
               if (plant) {
                 this.defenderAssignments.set(this.selectedCreatureId, plant.col);
                 // Move creature's homeCol to the plant
@@ -394,6 +394,7 @@ export class GameScene extends Phaser.Scene {
     // hedgeKingdoms systems
     this.waveManager = new WaveManager();
     this.enemySim = new EnemySimulator();
+    this.enemySim.setTerrainGroundRow(col => this.terrainMap.getGroundRow(col));
     this.enemyRenderer = new EnemyRenderer(this.asciiRenderer);
     this.defenderCombat = new DefenderCombatSystem();
     this.battleFx = new BattleEffectRenderer(this.asciiRenderer);
@@ -490,10 +491,11 @@ export class GameScene extends Phaser.Scene {
 
     // ── hedgeKingdoms update ──────────────────────────────────────────────
     if (this.kingdomsActive) {
-      // One-shot plant re-render on the first frame after entering kingdoms mode
-      if (this.kingdomsNeedsPlantRender) {
-        this.kingdomsNeedsPlantRender = false;
+      // Rapid-grow seeded plants to Mature over the first ~15 frames
+      if (this.kingdomsGrowthBoost > 0) {
+        this.kingdomsGrowthBoost--;
         const p = this.timeClock.getCurrentPeriod();
+        this.growthSim.onPeriodAdvance(p, this.weatherEngine.getCurrentWeather());
         this.plantRenderer.renderPlants(this.growthSim.getPlants(), p.season);
       }
 
@@ -1115,11 +1117,10 @@ export class GameScene extends Phaser.Scene {
       seedKingdomsHedge(this.growthSim, this.creatureSim, this.terrainMap, this.timeClock);
     }
 
-    // Render plants immediately — also flag a re-render for the first update frame
-    // in case any system clears overlays between create() and the first update()
-    const period = this.timeClock.getCurrentPeriod();
-    this.plantRenderer.renderPlants(this.growthSim.getPlants(), period.season);
-    this.kingdomsNeedsPlantRender = true;
+    // Rapid-grow seeded plants to Mature through the normal pipeline
+    // (pre-loading Mature directly doesn't render; growing through
+    // the period-advance → renderPlants pipeline works reliably)
+    this.kingdomsGrowthBoost = 15;
 
     if (startWave > 1) {
       this.waveManager.startAtWave(startWave);
@@ -1197,10 +1198,12 @@ export class GameScene extends Phaser.Scene {
     const targetZoom = cam.width / (30 * cw);
     cam.setZoom(cam.zoom + (targetZoom - cam.zoom) * 0.12);
 
-    // Centre on the tracked enemy — use TARGET zoom so scroll doesn't
-    // fight with the zoom transition and end up underground
-    const targetX = target.col * cw - cam.width / (2 * targetZoom);
-    const targetY = Math.max(0, target.row * ch - cam.height / (2 * targetZoom));
+    // Centre on the tracked enemy cell midpoint using the CURRENT zoom
+    // (Phaser renders with cam.zoom, not targetZoom)
+    const worldX = target.col * cw + cw / 2;
+    const worldY = target.row * ch + ch / 2;
+    const targetX = worldX - cam.width / (2 * cam.zoom);
+    const targetY = Math.max(0, worldY - cam.height / (2 * cam.zoom));
     cam.scrollX += (targetX - cam.scrollX) * 0.15;
     cam.scrollY += (targetY - cam.scrollY) * 0.15;
   }

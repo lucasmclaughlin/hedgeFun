@@ -68,6 +68,11 @@ export class EnemySimulator {
   private waveFromLeft = true;
   private spawnQueue: SpawnEntry[] = [];
   private elapsedMs = 0;
+  private terrainGroundRow: ((col: number) => number) | null = null;
+
+  setTerrainGroundRow(fn: (col: number) => number): void {
+    this.terrainGroundRow = fn;
+  }
 
   /**
    * Spawn a new wave. Enemies alternate sides; which side leads alternates
@@ -124,6 +129,10 @@ export class EnemySimulator {
       const msPerCol = 1000 / Math.max(e.currentSpeed, 0.01);
       if (e.moveTimer >= msPerCol) {
         e.col += e.facing;
+        // Ground enemies follow terrain contour
+        if (e._def.layer !== Layer.Sky && this.terrainGroundRow) {
+          e.row = this.terrainGroundRow(e.col);
+        }
         e.moveTimer -= msPerCol;
       }
 
@@ -167,7 +176,11 @@ export class EnemySimulator {
   private createEnemy(def: EnemyDef, fromLeft: boolean): LiveEnemy {
     const col = fromLeft ? LEFT_SPAWN_COL : RIGHT_SPAWN_COL;
     const facing: 1 | -1 = fromLeft ? 1 : -1;
-    const row = Math.round((def.rowRange[0] + def.rowRange[1]) / 2);
+    const nominalRow = Math.round((def.rowRange[0] + def.rowRange[1]) / 2);
+    // Ground enemies snap to terrain; sky enemies keep their fixed row
+    const row = def.layer !== Layer.Sky && this.terrainGroundRow
+      ? this.terrainGroundRow(col)
+      : nominalRow;
     return {
       id: this.nextId++,
       defId: def.id,

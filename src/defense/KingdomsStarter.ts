@@ -64,7 +64,7 @@ export function seedKingdomsHedge(
       speciesId,
       col,
       row,
-      stage: GrowthStage.Mature,
+      stage: GrowthStage.Seed,
       ticksInStage: 0,
       plantedAt,
       health: 1.0,

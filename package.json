@@ -8,7 +8,8 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "lint": "eslint src --ext .ts",
-    "artool": "vite tools/artool"
+    "artool": "vite tools/artool",
+    "spritegen": "vite tools/spritegen --config tools/spritegen/vite.config.ts"
   },
   "repository": {
     "type": "git",

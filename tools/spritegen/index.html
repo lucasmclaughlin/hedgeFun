@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>hedgeFun Sprite Generator</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Courier New', monospace; background: #1a1a2e; color: #e0d8c0; padding: 20px; }
+    h1 { color: #d4a017; margin-bottom: 8px; }
+    h2 { color: #c0a050; margin: 16px 0 8px; font-size: 16px; }
+    .controls { background: #2a2a3e; padding: 16px; border-radius: 8px; margin-bottom: 16px; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+    .controls label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+    .controls select, .controls input[type="number"] { background: #1a1a2e; color: #e0d8c0; border: 1px solid #4a4a5e; padding: 4px 8px; border-radius: 4px; font-family: inherit; }
+    button { background: #4a3a20; color: #e0d8c0; border: 1px solid #8a7050; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-family: inherit; font-size: 14px; }
+    button:hover { background: #5a4a30; }
+    button.primary { background: #6b1a1a; border-color: #d4a017; color: #ffe8a0; }
+    button.primary:hover { background: #8b2a2a; }
+    .grid { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 12px; }
+    .sprite-card { background: #2a2a3e; border: 1px solid #3a3a4e; border-radius: 8px; padding: 12px; text-align: center; }
+    .sprite-card canvas { display: block; margin: 0 auto 8px; image-rendering: pixelated; }
+    .sprite-card .label { font-size: 12px; color: #a0a0b0; margin-bottom: 4px; }
+    .progress { color: #d4a017; margin: 8px 0; }
+    #output { margin-top: 16px; }
+  </style>
+</head>
+<body>
+  <h1>hedgeFun Sprite Generator</h1>
+  <p style="color:#a0a0b0; margin-bottom:12px;">Generate JPG images of creatures and plants from the game data.</p>
+
+  <div class="controls">
+    <label>Type:
+      <select id="type">
+        <option value="creatures">Creatures</option>
+        <option value="plants">Plants (Mature)</option>
+        <option value="both">Both</option>
+      </select>
+    </label>
+    <label>Scale:
+      <input type="number" id="scale" value="4" min="1" max="10" style="width:60px;" />
+    </label>
+    <label>Background:
+      <input type="color" id="bgColor" value="#1a1a2e" />
+    </label>
+    <label><input type="checkbox" id="showName" checked /> Show name</label>
+    <label><input type="checkbox" id="negative" /> Negative (inverted)</label>
+    <button class="primary" id="generate">Generate Previews</button>
+    <button id="downloadAll">Download All as ZIP</button>
+  </div>
+
+  <div id="output"></div>
+
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

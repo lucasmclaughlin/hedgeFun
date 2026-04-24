@@ -460,7 +460,10 @@ export class HudRenderer {
       const canPlant = sp.plantableSeasons.includes(period.season) && energy >= sp.energyCost;
       const marker = canPlant ? '\u2713' : '\u2717';
       const activity = sp.seasonalActivity[period.season];
-      const text = `${arrow}[${num}] ${sp.name.padEnd(11)} ${sp.energyCost}E ${marker} ${activity}`;
+      const seedCells = sp.visuals[GrowthStage.Seed].cells;
+      const surfaceCell = seedCells.find(([, rowOff]) => rowOff === 0) ?? seedCells[0];
+      const seedChar = surfaceCell ? surfaceCell[2].char : ' ';
+      const text = `${arrow}[${num}] ${seedChar} ${sp.name.padEnd(11)} ${sp.energyCost}E ${marker} ${activity}`;
 
       this.speciesLines[i].setText(text);
 

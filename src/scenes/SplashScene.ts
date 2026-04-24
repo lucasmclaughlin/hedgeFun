@@ -1,6 +1,4 @@
 import Phaser from 'phaser';
-import { SaveManager } from '@/simulation/SaveManager';
-import type { SaveData } from '@/types';
 
 /** High score entry stored in localStorage */
 export interface HighScoreEntry {
@@ -96,15 +94,12 @@ export class SplashScene extends Phaser.Scene {
   private playerName = '';
   private nameText!: Phaser.GameObjects.Text;
   private promptText!: Phaser.GameObjects.Text;
-  private continueText!: Phaser.GameObjects.Text;
-  private importText!: Phaser.GameObjects.Text;
   private titleChars: { obj: Phaser.GameObjects.Text; baseX: number; baseY: number }[] = [];
   private scoreTexts: Phaser.GameObjects.Text[] = [];
   private creatures: { obj: Phaser.GameObjects.Text; x: number; dx: number; speed: number; frames: string[]; frameIdx: number; frameTimer: number; frameRate: number; minX: number; maxX: number }[] = [];
   private blinkTimer = 0;
   private cursorOn = true;
   private animTime = 0;
-  private saveManager = new SaveManager();
 
   constructor() {
     super({ key: 'SplashScene' });
@@ -296,88 +291,11 @@ export class SplashScene extends Phaser.Scene {
       color: '#666666',
     }).setOrigin(0.5);
 
-    // Load / Import buttons
-    const btnY = nameY + 100;
-    const btnStyle: Phaser.Types.GameObjects.Text.TextStyle = {
-      fontFamily: 'Courier New, monospace',
-      fontSize: '14px',
-      color: '#888888',
-      backgroundColor: '#1a1a1a',
-      padding: { x: 12, y: 6 },
-    };
-    const btnHoverColor = '#cccccc';
-    const btnBaseColor = '#888888';
-
-    // Continue (load auto-save)
-    const hasSave = this.saveManager.hasAutoSave();
-    this.continueText = this.add.text(cx - 80, btnY, '[ Continue ]', {
-      ...btnStyle,
-      color: hasSave ? btnBaseColor : '#444444',
-    }).setOrigin(0.5).setInteractive({ useHandCursor: hasSave });
-
-    if (hasSave) {
-      this.continueText.on('pointerover', () => this.continueText.setColor(btnHoverColor));
-      this.continueText.on('pointerout', () => this.continueText.setColor(btnBaseColor));
-      this.continueText.on('pointerdown', () => this.loadAutoSave());
-    }
-
-    // Import
-    this.importText = this.add.text(cx + 80, btnY, '[ Import ]', btnStyle)
-      .setOrigin(0.5).setInteractive({ useHandCursor: true });
-    this.importText.on('pointerover', () => this.importText.setColor(btnHoverColor));
-    this.importText.on('pointerout', () => this.importText.setColor(btnBaseColor));
-    this.importText.on('pointerdown', () => this.importSave());
-
-    // hedgeFriends mode button
-    const villageText = this.add.text(cx - 95, btnY + 36, '[ hedgeFriends ]', {
-      ...btnStyle,
-      color: '#88aa88',
-    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
-    villageText.on('pointerover', () => villageText.setColor('#ccddcc'));
-    villageText.on('pointerout', () => villageText.setColor('#88aa88'));
-    villageText.on('pointerdown', () => this.scene.start('VillageScene'));
-
-    // hedgeKingdoms mode button
-    const kingdomsText = this.add.text(cx + 95, btnY + 36, '[ hedgeKingdoms ]', {
-      ...btnStyle,
-      color: '#c8884a',
-    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
-    kingdomsText.on('pointerover', () => kingdomsText.setColor('#e8b47a'));
-    kingdomsText.on('pointerout', () => kingdomsText.setColor('#c8884a'));
-    kingdomsText.on('pointerdown', () => this.scene.start('KingdomsSplashScene'));
-
-    // Keyboard shortcuts hint
-    const shortcutPrefix = hasSave ? 'C = continue  ·  I = import save' : 'I = import save';
-    this.add.text(cx, btnY + 68, `${shortcutPrefix}  ·  F = hedgeFriends  ·  K = hedgeKingdoms`, {
-      fontFamily: 'Courier New, monospace',
-      fontSize: '11px',
-      color: '#555555',
-    }).setOrigin(0.5);
-
-    // Keyboard input for name + shortcuts
+    // Keyboard input for name
     this.input.keyboard!.on('keydown', (event: KeyboardEvent) => {
       if (event.key === 'Enter' && this.playerName.length > 0) {
         this.scene.start('TutorialScene', { playerName: this.playerName });
         return;
-      }
-      // Shortcuts only when name field is empty (so typing 'c'/'i' in a name works)
-      if (this.playerName.length === 0) {
-        if (event.key === 'c' || event.key === 'C') {
-          this.loadAutoSave();
-          return;
-        }
-        if (event.key === 'i' || event.key === 'I') {
-          this.importSave();
-          return;
-        }
-        if (event.key === 'f' || event.key === 'F') {
-          this.scene.start('VillageScene');
-          return;
-        }
-        if (event.key === 'k' || event.key === 'K') {
-          this.scene.start('KingdomsSplashScene');
-          return;
-        }
       }
       if (event.key === 'Backspace') {
         this.playerName = this.playerName.slice(0, -1);
@@ -442,18 +360,6 @@ export class SplashScene extends Phaser.Scene {
     const cursor = this.cursorOn ? '_' : ' ';
     const display = this.playerName.length > 0 ? this.playerName + cursor : cursor;
     this.nameText.setText(display);
-  }
-
-  private loadAutoSave(): void {
-    const save = this.saveManager.loadAutoSave();
-    if (!save) return;
-    this.scene.start('GameScene', { playerName: save.playerName, loadSave: save });
-  }
-
-  private async importSave(): Promise<void> {
-    const save = await this.saveManager.promptImport();
-    if (!save) return;
-    this.scene.start('GameScene', { playerName: save.playerName || 'Player', loadSave: save });
   }
 
 }

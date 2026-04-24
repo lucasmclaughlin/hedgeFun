@@ -236,6 +236,8 @@ export class KingdomsHudRenderer {
       this.logBg, this.logText,
       this.tooltipText,
     ];
+
+    this.setVisible(false);
   }
 
   getAllObjects(): Phaser.GameObjects.GameObject[] {

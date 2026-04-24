@@ -43,6 +43,18 @@
       <input type="color" id="bgColor" value="#1a1a2e" />
     </label>
     <label><input type="checkbox" id="showName" checked /> Show name</label>
+    <label>Font size:
+      <input type="number" id="fontSize" value="12" min="6" max="48" style="width:60px;" />
+    </label>
+    <label>Font colour:
+      <input type="color" id="fontColor" value="#e0d8c0" />
+    </label>
+    <label><input type="checkbox" id="fontBold" /> Bold</label>
+    <label><input type="checkbox" id="fontItalic" /> Italic</label>
+    <label>Text spacing:
+      <input type="range" id="textSpacing" value="8" min="-40" max="60" style="width:100px;" />
+      <span id="textSpacingVal">8</span>px
+    </label>
     <label><input type="checkbox" id="negative" /> Negative (inverted)</label>
     <button class="primary" id="generate">Generate Previews</button>
     <button id="downloadAll">Download All as ZIP</button>

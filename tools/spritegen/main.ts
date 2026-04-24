@@ -73,10 +73,15 @@ function renderSprite(
     bgColor: string;
     showName: boolean;
     negative: boolean;
+    labelFontSize: number;
+    fontColor: string;
+    fontBold: boolean;
+    fontItalic: boolean;
+    textSpacing: number;
   },
 ): HTMLCanvasElement {
   const { cells, name, fixedGridW, fixedGridH } = job;
-  const { scale, bgColor, showName, negative } = opts;
+  const { scale, bgColor, showName, negative, labelFontSize: baseLabelSize, fontColor, fontBold, fontItalic, textSpacing } = opts;
   const cw = GRID_CONFIG.cellWidth * scale;
   const ch = GRID_CONFIG.cellHeight * scale;
   const fontSize = GRID_CONFIG.fontSize * scale;
@@ -93,26 +98,24 @@ function renderSprite(
   const pad = 1;
 
   // Measure name label to ensure it fits — shrink font if needed
-  let labelFontSize = Math.max(12, Math.round(12 * scale));
+  let labelFontSize = Math.round(baseLabelSize * scale);
   let nameRowHeight = 0;
+  const spacingPx = Math.round(textSpacing * scale);
   const tempCanvas = document.createElement('canvas');
   const tempCtx = tempCanvas.getContext('2d')!;
 
   const minCanvasW = (gridW + pad * 2) * cw;
 
+  const fontStyle = `${fontItalic ? 'italic ' : ''}${fontBold ? 'bold ' : ''}`;
+
   if (showName) {
-    // Shrink label font until it fits within the canvas width (with margin)
-    const maxLabelW = minCanvasW - Math.round(8 * scale);
-    tempCtx.font = `${labelFontSize}px ${GRID_CONFIG.fontFamily}`;
-    while (labelFontSize > 8 && tempCtx.measureText(name).width > maxLabelW) {
-      labelFontSize--;
-      tempCtx.font = `${labelFontSize}px ${GRID_CONFIG.fontFamily}`;
-    }
-    nameRowHeight = labelFontSize + Math.round(8 * scale);
+    // Measure the label at the requested size — expand the canvas to fit
+    tempCtx.font = `${fontStyle}${labelFontSize}px ${GRID_CONFIG.fontFamily}`;
+    nameRowHeight = labelFontSize + spacingPx;
   }
 
-  // If the label is still wider than the grid, expand the canvas
-  tempCtx.font = `${labelFontSize}px ${GRID_CONFIG.fontFamily}`;
+  // Widen canvas if the label is wider than the sprite grid
+  tempCtx.font = `${fontStyle}${labelFontSize}px ${GRID_CONFIG.fontFamily}`;
   const labelW = showName ? tempCtx.measureText(name).width + Math.round(16 * scale) : 0;
   const canvasW = Math.max(minCanvasW, labelW);
   const canvasH = (gridH + pad * 2) * ch + nameRowHeight;
@@ -161,12 +164,12 @@ function renderSprite(
 
   // Draw name label
   if (showName) {
-    ctx.font = `${labelFontSize}px ${GRID_CONFIG.fontFamily}`;
-    const labelColor = negative ? invertColor('#e0d8c0') : '#e0d8c0';
+    ctx.font = `${fontStyle}${labelFontSize}px ${GRID_CONFIG.fontFamily}`;
+    const labelColor = negative ? invertColor(fontColor) : fontColor;
     ctx.fillStyle = labelColor;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
-    ctx.fillText(name, canvasW / 2, canvasH - nameRowHeight + Math.round(4 * scale));
+    ctx.fillText(name, canvasW / 2, canvasH - labelFontSize);
     ctx.textAlign = 'start';
   }
 
@@ -360,10 +363,20 @@ const typeSelect = document.getElementById('type') as HTMLSelectElement;
 const scaleInput = document.getElementById('scale') as HTMLInputElement;
 const bgColorInput = document.getElementById('bgColor') as HTMLInputElement;
 const showNameCheckbox = document.getElementById('showName') as HTMLInputElement;
+const fontSizeInput = document.getElementById('fontSize') as HTMLInputElement;
+const fontColorInput = document.getElementById('fontColor') as HTMLInputElement;
+const fontBoldCheckbox = document.getElementById('fontBold') as HTMLInputElement;
+const fontItalicCheckbox = document.getElementById('fontItalic') as HTMLInputElement;
+const textSpacingInput = document.getElementById('textSpacing') as HTMLInputElement;
+const textSpacingVal = document.getElementById('textSpacingVal') as HTMLSpanElement;
 const negativeCheckbox = document.getElementById('negative') as HTMLInputElement;
 const generateBtn = document.getElementById('generate') as HTMLButtonElement;
 const downloadAllBtn = document.getElementById('downloadAll') as HTMLButtonElement;
 const output = document.getElementById('output') as HTMLDivElement;
+
+textSpacingInput.addEventListener('input', () => {
+  textSpacingVal.textContent = textSpacingInput.value;
+});
 
 interface RenderedSprite {
   job: SpriteJob;
@@ -380,6 +393,11 @@ function generatePreviews(): void {
   const scale = Math.max(1, Math.min(10, Number(scaleInput.value)));
   const bgColor = bgColorInput.value;
   const showName = showNameCheckbox.checked;
+  const labelFontSize = Math.max(6, Math.min(48, Number(fontSizeInput.value)));
+  const fontColor = fontColorInput.value;
+  const fontBold = fontBoldCheckbox.checked;
+  const fontItalic = fontItalicCheckbox.checked;
+  const textSpacing = Math.max(-40, Math.min(60, Number(textSpacingInput.value)));
   const negative = negativeCheckbox.checked;
 
   let jobs: SpriteJob[] = [];
@@ -406,7 +424,7 @@ function generatePreviews(): void {
     const end = Math.min(idx + 20, jobs.length);
     for (; idx < end; idx++) {
       const job = jobs[idx];
-      const canvas = renderSprite(job, { scale, bgColor, showName, negative });
+      const canvas = renderSprite(job, { scale, bgColor, showName, negative, labelFontSize, fontColor, fontBold, fontItalic, textSpacing });
       rendered.push({ job, canvas });
 
       const card = document.createElement('div');

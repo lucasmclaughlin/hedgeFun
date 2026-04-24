@@ -88,7 +88,6 @@ const MENU_CONTROLS = [
   ['Tab',           'Cycle speed (Pause/Slow/Normal/Fast)'],
   ['M',             'Milestone log (biodiversity score)'],
   ['V',             'Cycle view (Hedge / Underground / Full)'],
-  ['S / L',         'Save / Load game'],
   ['E / I',         'Export / Import save file'],
   ['Z',             'Screenshot mode (hide UI, zoom out)'],
   ['R',             'Return to main menu'],
@@ -124,12 +123,8 @@ export class HudRenderer {
   private menuOverlayText: Phaser.GameObjects.Text;
   private menuOverlayVisible = false;
   private menuButton: Phaser.GameObjects.Text;
-  private menuSaveBtn: Phaser.GameObjects.Text;
-  private menuLoadBtn: Phaser.GameObjects.Text;
   private menuRestartBtn: Phaser.GameObjects.Text;
   private menuCloseBtn: Phaser.GameObjects.Text;
-  private onSaveCallback: (() => void) | null = null;
-  private onLoadCallback: (() => void) | null = null;
   private onRestartCallback: (() => void) | null = null;
 
   private messageTimer = 0;
@@ -363,31 +358,17 @@ export class HudRenderer {
       padding: { x: 10, y: 5 },
     };
 
-    const totalBtns = 4;
+    const totalBtns = 2;
     const btnSpacing = menuWidth / totalBtns;
 
-    this.menuSaveBtn = scene.add.text(menuLeft + btnSpacing * 0 + btnSpacing / 2, btnY, '[ Save ]', actionBtnStyle)
+    this.menuRestartBtn = scene.add.text(menuLeft + btnSpacing * 0 + btnSpacing / 2, btnY, '[ Main Menu ]', actionBtnStyle)
       .setScrollFactor(0)
       .setDepth(212)
       .setOrigin(0.5, 1)
       .setAlpha(0)
       .setInteractive({ useHandCursor: true });
 
-    this.menuLoadBtn = scene.add.text(menuLeft + btnSpacing * 1 + btnSpacing / 2, btnY, '[ Load ]', actionBtnStyle)
-      .setScrollFactor(0)
-      .setDepth(212)
-      .setOrigin(0.5, 1)
-      .setAlpha(0)
-      .setInteractive({ useHandCursor: true });
-
-    this.menuRestartBtn = scene.add.text(menuLeft + btnSpacing * 2 + btnSpacing / 2, btnY, '[ Main Menu ]', actionBtnStyle)
-      .setScrollFactor(0)
-      .setDepth(212)
-      .setOrigin(0.5, 1)
-      .setAlpha(0)
-      .setInteractive({ useHandCursor: true });
-
-    this.menuCloseBtn = scene.add.text(menuLeft + btnSpacing * 3 + btnSpacing / 2, btnY, '[ Close \u00d7 ]', actionBtnStyle)
+    this.menuCloseBtn = scene.add.text(menuLeft + btnSpacing * 1 + btnSpacing / 2, btnY, '[ Close \u00d7 ]', actionBtnStyle)
       .setScrollFactor(0)
       .setDepth(212)
       .setOrigin(0.5, 1)
@@ -395,16 +376,14 @@ export class HudRenderer {
       .setInteractive({ useHandCursor: true });
 
     // Hover effects only — clicks handled by manual hit-test in GameScene (pointerup)
-    for (const btn of [this.menuSaveBtn, this.menuLoadBtn, this.menuRestartBtn, this.menuCloseBtn]) {
+    for (const btn of [this.menuRestartBtn, this.menuCloseBtn]) {
       btn.on('pointerover', () => btn.setColor('#eeffee'));
       btn.on('pointerout', () => btn.setColor('#8aaa8a'));
     }
   }
 
-  /** Register callbacks for menu button actions */
-  setCallbacks(onSave: () => void, onLoad: () => void, onRestart: () => void): void {
-    this.onSaveCallback = onSave;
-    this.onLoadCallback = onLoad;
+  /** Register callback for menu button action */
+  setCallbacks(onRestart: () => void): void {
     this.onRestartCallback = onRestart;
   }
 
@@ -722,8 +701,6 @@ export class HudRenderer {
       this.menuOverlayVisible = true;
       this.menuOverlayBg.setAlpha(1);
       this.menuOverlayText.setAlpha(1);
-      this.menuSaveBtn.setAlpha(1);
-      this.menuLoadBtn.setAlpha(1);
       this.menuRestartBtn.setAlpha(1);
       this.menuCloseBtn.setAlpha(1);
     }
@@ -733,8 +710,6 @@ export class HudRenderer {
     this.menuOverlayVisible = false;
     this.menuOverlayBg.setAlpha(0);
     this.menuOverlayText.setAlpha(0);
-    this.menuSaveBtn.setAlpha(0);
-    this.menuLoadBtn.setAlpha(0);
     this.menuRestartBtn.setAlpha(0);
     this.menuCloseBtn.setAlpha(0);
   }
@@ -758,16 +733,6 @@ export class HudRenderer {
     }
     // Action buttons inside the menu overlay
     if (this.menuOverlayVisible) {
-      if (this.hitTestText(this.menuSaveBtn, screenX, screenY)) {
-        this.onSaveCallback?.();
-        this.hideMenuOverlay();
-        return true;
-      }
-      if (this.hitTestText(this.menuLoadBtn, screenX, screenY)) {
-        this.onLoadCallback?.();
-        this.hideMenuOverlay();
-        return true;
-      }
       if (this.hitTestText(this.menuRestartBtn, screenX, screenY)) {
         this.onRestartCallback?.();
         return true;
@@ -804,8 +769,6 @@ export class HudRenderer {
       if (!this.menuOverlayVisible) {
         this.menuOverlayBg.setVisible(false);
         this.menuOverlayText.setVisible(false);
-        this.menuSaveBtn.setVisible(false);
-        this.menuLoadBtn.setVisible(false);
         this.menuRestartBtn.setVisible(false);
         this.menuCloseBtn.setVisible(false);
       }
@@ -833,8 +796,6 @@ export class HudRenderer {
       this.menuButton,
       this.menuOverlayBg,
       this.menuOverlayText,
-      this.menuSaveBtn,
-      this.menuLoadBtn,
       this.menuRestartBtn,
       this.menuCloseBtn,
     ];

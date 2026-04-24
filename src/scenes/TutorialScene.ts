@@ -11,7 +11,6 @@ const CONTROLS = [
   ['Tab', 'Cycle speed (Pause / Slow / Normal / Fast)'],
   ['M', 'Milestone log (biodiversity score)'],
   ['V', 'Cycle view (Hedge / Underground / Full)'],
-  ['S / L', 'Save / Load game'],
   ['E / I', 'Export / Import save file'],
   ['Z', 'Screenshot mode (hide UI, full zoom out)'],
   ['R', 'Return to main menu'],

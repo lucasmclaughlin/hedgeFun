@@ -358,11 +358,7 @@ export class GameScene extends Phaser.Scene {
     this.hudRenderer = new HudRenderer(this);
 
     // Wire up menu button callbacks
-    this.hudRenderer.setCallbacks(
-      () => this.manualSave(),
-      () => this.manualLoad(),
-      () => this.restartGame(),
-    );
+    this.hudRenderer.setCallbacks(() => this.restartGame());
 
     // Create a separate HUD camera that ignores zoom/scroll
     this.hudCamera = this.cameras.add(0, 0, this.cameras.main.width, this.cameras.main.height);
@@ -715,16 +711,6 @@ export class GameScene extends Phaser.Scene {
         this.restartGame();
         break;
 
-      // Save
-      case 's': case 'S':
-        this.manualSave();
-        break;
-
-      // Load
-      case 'l': case 'L':
-        this.manualLoad();
-        break;
-
       // Prune
       case 'p': case 'P':
         this.tryPrune();
@@ -1062,20 +1048,6 @@ export class GameScene extends Phaser.Scene {
     this.lastSavePeriod = this.timeClock.getTotalPeriods();
   }
 
-  private manualSave(): void {
-    this.saveManager.autoSave(this.buildSaveData());
-    this.lastSavePeriod = this.timeClock.getTotalPeriods();
-    this.hudRenderer.showMessage('Game saved');
-  }
-
-  private manualLoad(): void {
-    const save = this.saveManager.loadAutoSave();
-    if (!save) {
-      this.hudRenderer.showMessage('No save found');
-      return;
-    }
-    this.scene.start('GameScene', { playerName: this.playerName, loadSave: save });
-  }
 
   private exportSave(): void {
     this.saveManager.downloadSave(this.buildSaveData());

@@ -105,6 +105,16 @@ export class SplashScene extends Phaser.Scene {
     super({ key: 'SplashScene' });
   }
 
+  init(): void {
+    this.playerName = '';
+    this.titleChars = [];
+    this.scoreTexts = [];
+    this.creatures = [];
+    this.blinkTimer = 0;
+    this.cursorOn = true;
+    this.animTime = 0;
+  }
+
   create(): void {
     const cam = this.cameras.main;
     const cx = cam.width / 2;

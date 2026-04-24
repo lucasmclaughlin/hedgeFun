@@ -314,6 +314,7 @@ export class GameScene extends Phaser.Scene {
 
         if (col >= 0 && col < GRID_CONFIG.cols) {
           this.asciiRenderer.setCursor(col, this.terrainMap.getGroundRow(col));
+          this.tryPlant();
         }
       }
     });

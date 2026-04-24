@@ -404,19 +404,13 @@ export class GameScene extends Phaser.Scene {
   }
 
   update(_time: number, delta: number): void {
-    // Camera scrolling with arrow keys
+    // Camera scrolling with left/right arrow keys (up/down cycle species)
     const scrollSpeed = 5;
     if (this.cursors.left.isDown) {
       this.cameras.main.scrollX -= scrollSpeed;
     }
     if (this.cursors.right.isDown) {
       this.cameras.main.scrollX += scrollSpeed;
-    }
-    if (this.cursors.up.isDown) {
-      this.cameras.main.scrollY -= scrollSpeed;
-    }
-    if (this.cursors.down.isDown) {
-      this.cameras.main.scrollY += scrollSpeed;
     }
 
     const isPaused = this.timeClock.getIsPaused();
@@ -688,6 +682,16 @@ export class GameScene extends Phaser.Scene {
       // Species selection (1-6)
       case '1': case '2': case '3': case '4': case '5': case '6':
         this.selectedSpeciesIndex = parseInt(event.key) - 1;
+        break;
+
+      // Cycle species with up/down arrows
+      case 'ArrowUp':
+        event.preventDefault();
+        this.selectedSpeciesIndex = (this.selectedSpeciesIndex - 1 + SPECIES_LIST.length) % SPECIES_LIST.length;
+        break;
+      case 'ArrowDown':
+        event.preventDefault();
+        this.selectedSpeciesIndex = (this.selectedSpeciesIndex + 1) % SPECIES_LIST.length;
         break;
 
       // Plant action

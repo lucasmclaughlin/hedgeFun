@@ -3,10 +3,11 @@ import Phaser from 'phaser';
 const CONTROLS = [
   ['A / D', 'Move cursor left / right'],
   ['1-6', 'Select plant species'],
+  ['↑ / ↓', 'Cycle plant species'],
   ['Space / Enter', 'Plant selected species'],
   ['P', 'Prune plant at cursor'],
   ['H', 'Lay hedge (Winter only, Mature plants)'],
-  ['Arrow keys', 'Pan camera'],
+  ['← / →', 'Pan camera'],
   ['Mouse drag', 'Pan camera'],
   ['Tab', 'Cycle speed (Pause / Slow / Normal / Fast)'],
   ['M', 'Milestone log (biodiversity score)'],

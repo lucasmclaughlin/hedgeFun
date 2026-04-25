@@ -783,34 +783,6 @@ export class GameScene extends Phaser.Scene {
           void this.enterRealtimeMode();
         }
         break;
-
-      // hedgeKingdoms — toggle kingdoms mode
-      case 'x': case 'X':
-        if (this.kingdomsActive) {
-          this.exitKingdomsMode();
-        } else {
-          this.enterKingdomsMode();
-        }
-        break;
-
-      // hedgeKingdoms — battle camera: cycle through enemies, press again to advance
-      case 'b': case 'B':
-        if (this.kingdomsActive) {
-          const enemies = this.enemySim.getEnemies();
-          if (!this.battleCameraMode) {
-            this.battleCameraMode = true;
-            this.battleCameraIndex = 0;
-            this.hudRenderer.showMessage('Battle Camera — press B to cycle enemies, Esc to exit');
-          } else {
-            this.battleCameraIndex = (this.battleCameraIndex + 1) % Math.max(1, enemies.length);
-            if (enemies.length > 0) {
-              const e = enemies[this.battleCameraIndex % enemies.length];
-              const def = this.ENEMY_MAP[e.defId];
-              this.hudRenderer.showMessage(`Tracking: ${def?.name ?? e.defId} (${Math.ceil(e.hp)} HP)`);
-            }
-          }
-        }
-        break;
     }
   }
 
